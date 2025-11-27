@@ -1,0 +1,159 @@
+.ai-sidebar {
+  position: fixed;
+  right: -400px;
+  top: 0;
+  width: 400px;
+  height: 100vh;
+  background: var(--bg-darker);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  z-index: 200;
+  transition: right var(--transition-normal);
+}
+
+.ai-sidebar.open {
+  right: 0;
+}
+
+.ai-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ai-sidebar-header h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.close-btn:hover {
+  color: var(--text-primary);
+}
+
+.ai-chat-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.ai-welcome {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.ai-avatar {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.ai-welcome p {
+  margin-bottom: 1rem;
+  color: var(--text-secondary);
+}
+
+.ai-welcome ul {
+  list-style: none;
+  text-align: left;
+  display: inline-block;
+}
+
+.ai-welcome li {
+  padding: 0.25rem 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.ai-welcome li::before {
+  content: '✦ ';
+  color: var(--primary);
+}
+
+.ai-message {
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.ai-message.user {
+  flex-direction: row-reverse;
+}
+
+.ai-message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.ai-message.user .ai-message-avatar {
+  background: var(--gradient-primary);
+  color: white;
+}
+
+.ai-message-content {
+  max-width: 80%;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.ai-message.user .ai-message-content {
+  background: var(--primary);
+  color: white;
+}
+
+.ai-message-content.typing {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.ai-input-container {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: 0.75rem;
+}
+
+.ai-input-container textarea {
+  flex: 1;
+  padding: 0.75rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  resize: none;
+}
+
+.ai-input-container textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+@media (max-width: 768px) {
+  .ai-sidebar {
+    width: 100%;
+    right: -100%;
+  }
+}
+
