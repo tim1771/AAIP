@@ -8,7 +8,7 @@ export default function LinkTracker() {
   const [links, setLinks] = useState([])
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ url: '', name: '', product: '', source: '', medium: '', campaign: '' })
+  const [form, setForm] = useState({ url: '', product: '', source: '', medium: '', campaign: '' })
 
   useEffect(() => { loadData() }, [user])
 
@@ -16,7 +16,7 @@ export default function LinkTracker() {
     if (!user) return
     try {
       const [linksRes, productsRes] = await Promise.all([
-        supabase.from('affiliate_links').select('*, affiliate_products(product_name), campaigns(name)').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('tracked_links').select('*, affiliate_products(product_name), campaigns(name)').eq('user_id', user.id).order('created_at', { ascending: false }),
         supabase.from('affiliate_products').select('id, product_name').eq('user_id', user.id)
       ])
       setLinks(linksRes.data || [])
@@ -28,15 +28,20 @@ export default function LinkTracker() {
     if (!form.url) { addToast('Please enter a URL', 'warning'); return }
     try {
       const shortCode = generateShortCode()
-      const trackedUrl = `${form.url}${form.url.includes('?') ? '&' : '?'}utm_source=${form.source || 'affiliateai'}&utm_medium=${form.medium || 'link'}&utm_campaign=${form.campaign || 'default'}`
+      const destinationUrl = `${form.url}${form.url.includes('?') ? '&' : '?'}utm_source=${form.source || 'affiliateai'}&utm_medium=${form.medium || 'link'}&utm_campaign=${form.campaign || 'default'}`
       
-      await supabase.from('affiliate_links').insert({
-        user_id: user.id, original_url: form.url, tracked_url: trackedUrl, short_code: shortCode,
-        custom_name: form.name || null, product_id: form.product || null,
-        utm_source: form.source || 'affiliateai', utm_medium: form.medium || 'link', utm_campaign: form.campaign || 'default'
+      await supabase.from('tracked_links').insert({
+        user_id: user.id, 
+        original_url: form.url, 
+        destination_url: destinationUrl, 
+        short_code: shortCode,
+        product_id: form.product || null,
+        utm_source: form.source || 'affiliateai', 
+        utm_medium: form.medium || 'link', 
+        utm_campaign: form.campaign || 'default'
       })
       addToast('Link created!', 'success')
-      setForm({ url: '', name: '', product: '', source: '', medium: '', campaign: '' })
+      setForm({ url: '', product: '', source: '', medium: '', campaign: '' })
       loadData()
     } catch (error) { addToast('Error creating link', 'error') }
   }
@@ -47,7 +52,7 @@ export default function LinkTracker() {
   }
 
   const deleteLink = async (id) => {
-    await supabase.from('affiliate_links').delete().eq('id', id)
+    await supabase.from('tracked_links').delete().eq('id', id)
     addToast('Link deleted', 'success')
     loadData()
   }
@@ -68,16 +73,13 @@ export default function LinkTracker() {
         <div className="card-body">
           <div className="form-row">
             <div className="form-group"><label>Original Affiliate URL*</label><input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://affiliate-link.com/product?ref=you" /></div>
-            <div className="form-group"><label>Link Name</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g., Blog Footer CTA" /></div>
-          </div>
-          <div className="form-row">
             <div className="form-group"><label>Product</label><select value={form.product} onChange={(e) => setForm({ ...form, product: e.target.value })}><option value="">Select product...</option>{products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}</select></div>
-            <div className="form-group"><label>UTM Source</label><input value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} placeholder="e.g., blog, email, social" /></div>
           </div>
           <div className="form-row">
+            <div className="form-group"><label>UTM Source</label><input value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} placeholder="e.g., blog, email, social" /></div>
             <div className="form-group"><label>UTM Medium</label><input value={form.medium} onChange={(e) => setForm({ ...form, medium: e.target.value })} placeholder="e.g., cpc, banner, post" /></div>
-            <div className="form-group"><label>UTM Campaign</label><input value={form.campaign} onChange={(e) => setForm({ ...form, campaign: e.target.value })} placeholder="e.g., summer_sale" /></div>
           </div>
+          <div className="form-group"><label>UTM Campaign</label><input value={form.campaign} onChange={(e) => setForm({ ...form, campaign: e.target.value })} placeholder="e.g., summer_sale" /></div>
           <button className="btn btn-primary" onClick={createLink}>Create Link</button>
         </div>
       </div>
@@ -88,20 +90,19 @@ export default function LinkTracker() {
           {links.length > 0 ? (
             <div className="table-container">
               <table className="data-table">
-                <thead><tr><th>Name</th><th>Product</th><th>Source</th><th>Clicks</th><th>Actions</th></tr></thead>
+                <thead><tr><th>URL</th><th>Product</th><th>Source</th><th>Clicks</th><th>Actions</th></tr></thead>
                 <tbody>
                   {links.map(link => (
                     <tr key={link.id}>
                       <td>
-                        <div style={{ fontWeight: 500 }}>{link.custom_name || 'Unnamed'}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{link.tracked_url}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{link.destination_url || link.original_url}</div>
                       </td>
                       <td>{link.affiliate_products?.product_name || '-'}</td>
                       <td><span className="tag">{link.utm_source}/{link.utm_medium}</span></td>
                       <td><strong style={{ color: 'var(--primary)' }}>{link.click_count || 0}</strong></td>
                       <td>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button className="btn btn-sm btn-ghost" onClick={() => handleCopy(link.tracked_url)}>📋</button>
+                          <button className="btn btn-sm btn-ghost" onClick={() => handleCopy(link.destination_url || link.original_url)}>📋</button>
                           <button className="btn btn-sm btn-ghost" onClick={() => deleteLink(link.id)}>🗑️</button>
                         </div>
                       </td>
@@ -118,4 +119,3 @@ export default function LinkTracker() {
     </div>
   )
 }
-

@@ -41,7 +41,7 @@ export default function Analytics() {
       await supabase.from('analytics').insert({
         user_id: user.id,
         product_id: form.product || null,
-        traffic_source: form.source || 'manual',
+        source: form.source || 'manual',
         clicks: parseInt(form.clicks) || 0,
         conversions: parseInt(form.conversions) || 0,
         commission_earned: parseFloat(form.revenue) || 0
@@ -86,7 +86,7 @@ export default function Analytics() {
                       <tr key={a.id}>
                         <td>{formatDate(a.created_at)}</td>
                         <td>{a.affiliate_products?.product_name || '-'}</td>
-                        <td><span className="tag">{a.traffic_source}</span></td>
+                        <td><span className="tag">{a.source}</span></td>
                         <td>{a.clicks || 0}</td>
                         <td>{a.conversions || 0}</td>
                         <td style={{ color: 'var(--success)' }}>{formatCurrency(a.commission_earned || 0)}</td>
