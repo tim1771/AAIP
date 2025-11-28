@@ -133,25 +133,47 @@ export default function ContentGenerator() {
 
   const saveContent = async () => {
     if (!generatedContent) return
+    
+    // Valid values for DB constraints
+    const validContentTypes = ['blog_article', 'social_post', 'email', 'youtube_script', 'pinterest_pin', 'ad_copy']
+    const validPlatforms = ['blog', 'facebook', 'instagram', 'twitter', 'linkedin', 'pinterest', 'youtube', 'tiktok', 'email']
+    
+    const contentType = validContentTypes.includes(generatedContent.type) ? generatedContent.type : 'blog_article'
+    const platform = validPlatforms.includes(generatedContent.platform) ? generatedContent.platform : 'blog'
+    
     try {
-      await supabase.from('content').insert({
+      const { data, error } = await supabase.from('content').insert({
         user_id: user.id,
-        content_type: generatedContent.type,
-        platform: generatedContent.platform,
-        title: generatedContent.title,
+        content_type: contentType,
+        platform: platform,
+        title: generatedContent.title || 'Untitled',
         content: generatedContent.content,
-        hook: generatedContent.hook,
-        call_to_action: generatedContent.call_to_action,
+        hook: generatedContent.hook || null,
+        call_to_action: generatedContent.call_to_action || null,
         keywords: generatedContent.seo_keywords ? JSON.stringify(generatedContent.seo_keywords) : null,
         hashtags: generatedContent.suggested_hashtags ? JSON.stringify(generatedContent.suggested_hashtags) : null,
         product_id: generatedContent.productId || null,
-        word_count: wordCount(generatedContent.content),
-        reading_time: readingTime(generatedContent.content),
+        word_count: wordCount(generatedContent.content || ''),
+        reading_time: readingTime(generatedContent.content || ''),
         status: 'draft'
-      })
+      }).select()
+
+      if (error) {
+        console.error('Supabase insert error:', error)
+        addToast(`Error saving content: ${error.message}`, 'error')
+        return
+      }
+
+      if (!data || data.length === 0) {
+        console.error('No data returned from insert')
+        addToast('Error saving content: Insert failed', 'error')
+        return
+      }
+
       addToast('Content saved!', 'success')
       loadData()
     } catch (error) {
+      console.error('Save content error:', error)
       addToast('Error saving content', 'error')
     }
   }
