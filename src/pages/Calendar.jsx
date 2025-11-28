@@ -12,7 +12,10 @@ export default function Calendar() {
   useEffect(() => { loadData() }, [user])
 
   const loadData = async () => {
-    if (!user) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
     try {
       const { data } = await supabase.from('content_calendar').select('*').eq('user_id', user.id).order('scheduled_date')
       setItems(data || [])

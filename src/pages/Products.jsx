@@ -26,7 +26,10 @@ export default function Products() {
   }, [user])
 
   const loadData = async () => {
-    if (!user) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
     try {
       const [productsRes, nichesRes] = await Promise.all([
         supabase.from('affiliate_products').select('*, user_niches(niche_name)').eq('user_id', user.id).order('created_at', { ascending: false }),

@@ -18,7 +18,10 @@ export default function SEO() {
   }, [user])
 
   const loadData = async () => {
-    if (!user) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
     try {
       const [keywordsRes, nichesRes] = await Promise.all([
         supabase.from('keywords').select('*, user_niches(niche_name)').eq('user_id', user.id).order('priority', { ascending: false }),

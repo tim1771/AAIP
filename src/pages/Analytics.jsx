@@ -15,7 +15,10 @@ export default function Analytics() {
   useEffect(() => { loadData() }, [user, period])
 
   const loadData = async () => {
-    if (!user) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
     const dateFilter = new Date()
     dateFilter.setDate(dateFilter.getDate() - parseInt(period))
 

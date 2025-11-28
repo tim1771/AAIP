@@ -18,7 +18,10 @@ export default function NicheDiscovery() {
   }, [user])
 
   const loadNiches = async () => {
-    if (!user) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
     try {
       const { data } = await supabase
         .from('user_niches')

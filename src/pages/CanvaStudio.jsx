@@ -12,7 +12,10 @@ export default function CanvaStudio() {
   useEffect(() => { loadDesigns() }, [user])
 
   const loadDesigns = async () => {
-    if (!user) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
     try {
       const { data } = await supabase.from('canva_designs').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
       setDesigns(data || [])

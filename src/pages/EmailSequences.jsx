@@ -16,7 +16,10 @@ export default function EmailSequences() {
   useEffect(() => { loadData() }, [user])
 
   const loadData = async () => {
-    if (!user) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
     try {
       const [sequencesRes, nichesRes, productsRes] = await Promise.all([
         supabase.from('email_sequences').select('*, email_sequence_items(*)').eq('user_id', user.id).order('created_at', { ascending: false }),

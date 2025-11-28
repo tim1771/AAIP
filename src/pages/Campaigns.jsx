@@ -14,7 +14,10 @@ export default function Campaigns() {
   useEffect(() => { loadData() }, [user])
 
   const loadData = async () => {
-    if (!user) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
     try {
       const [campaignsRes, nichesRes, productsRes] = await Promise.all([
         supabase.from('campaigns').select('*, user_niches(niche_name), affiliate_products(product_name)').eq('user_id', user.id).order('created_at', { ascending: false }),

@@ -13,7 +13,10 @@ export default function LinkTracker() {
   useEffect(() => { loadData() }, [user])
 
   const loadData = async () => {
-    if (!user) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
     try {
       const [linksRes, productsRes] = await Promise.all([
         supabase.from('tracked_links').select('*, affiliate_products(product_name), campaigns(name)').eq('user_id', user.id).order('created_at', { ascending: false }),

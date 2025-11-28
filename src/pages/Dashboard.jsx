@@ -18,7 +18,10 @@ export default function Dashboard() {
   }, [user])
 
   const loadDashboardData = async () => {
-    if (!user) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
 
     try {
       const [nichesRes, productsRes, contentRes, journeyRes, analyticsRes] = await Promise.all([
