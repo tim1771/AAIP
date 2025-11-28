@@ -55,20 +55,38 @@ export default function NicheDiscovery() {
     if (!analysis) return
 
     try {
-      await supabase.from('user_niches').insert({
+      // Ensure profitability_score is an integer
+      const profitScore = parseInt(analysis.profitability_score) || 50
+      
+      const { data, error } = await supabase.from('user_niches').insert({
         user_id: user.id,
         niche_name: analysis.niche,
-        sub_niche: analysis.subNiche,
-        profitability_score: analysis.profitability_score,
-        competition_level: analysis.competition_level,
-        market_size: analysis.market_size,
-        trending: analysis.trending,
+        sub_niche: analysis.subNiche || null,
+        profitability_score: profitScore,
+        competition_level: analysis.competition_level?.toLowerCase() || 'medium',
+        market_size: analysis.market_size || null,
+        trending: analysis.trending || false,
+        interest_level: 5, // Default to middle value (constraint requires 1-10)
         ai_analysis: analysis
-      })
+      }).select()
+
+      if (error) {
+        console.error('Supabase insert error:', error)
+        addToast(`Error saving niche: ${error.message}`, 'error')
+        return
+      }
+
+      if (!data || data.length === 0) {
+        console.error('No data returned from insert')
+        addToast('Error saving niche: No data returned', 'error')
+        return
+      }
+
       addToast('Niche saved!', 'success')
-      loadNiches()
+      await loadNiches()
       setAnalysis(null)
     } catch (error) {
+      console.error('Save niche error:', error)
       addToast('Error saving niche', 'error')
     }
   }
