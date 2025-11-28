@@ -1,8 +1,7 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { getInitials, percentage } from '../lib/utils'
-import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { useEffect } from 'react'
 import AISidebar from './AISidebar'
 import './Layout.css'
 
@@ -18,7 +17,8 @@ const navItems = [
   { path: '/campaigns', icon: '📊', label: 'Campaigns' },
   { path: '/email', icon: '📧', label: 'Email Sequences' },
   { path: '/calendar', icon: '📅', label: 'Content Calendar' },
-  { divider: 'Integrations' },
+  { divider: 'Resources' },
+  { path: '/affiliates', icon: '🏦', label: 'Affiliate Programs' },
   { path: '/canva', icon: '🎨', label: 'Canva Studio' },
   { path: '/links', icon: '🔗', label: 'Link Tracker' },
   { divider: 'Analytics' },
@@ -36,6 +36,7 @@ const pageTitles = {
   '/campaigns': ['Campaigns', 'Manage your marketing campaigns'],
   '/email': ['Email Sequences', 'Create automated email campaigns'],
   '/calendar': ['Content Calendar', 'Schedule and plan your content'],
+  '/affiliates': ['Affiliate Programs', 'Browse 50+ affiliate programs'],
   '/canva': ['Canva Studio', 'Create stunning visuals'],
   '/links': ['Link Tracker', 'Track your affiliate links'],
   '/analytics': ['Analytics', 'Monitor your performance'],
@@ -46,28 +47,18 @@ const pageTitles = {
 export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { profile, user, signOut, sidebarOpen, setSidebarOpen, aiSidebarOpen, setAiSidebarOpen } = useStore()
-  const [journeyProgress, setJourneyProgress] = useState({ completed: 0, total: 9 })
-  const [currentStep, setCurrentStep] = useState(1)
+  const { 
+    profile, user, signOut, sidebarOpen, setSidebarOpen, 
+    aiSidebarOpen, setAiSidebarOpen,
+    journeyProgress, currentStep, loadJourneyProgress 
+  } = useStore()
 
+  // Refresh journey progress when navigating
   useEffect(() => {
-    loadJourneyProgress()
-  }, [user])
-
-  const loadJourneyProgress = async () => {
-    if (!user) return
-    const { data } = await supabase
-      .from('user_journey')
-      .select('*')
-      .eq('user_id', user.id)
-
-    if (data) {
-      const completed = data.filter(s => s.completed).length
-      setJourneyProgress({ completed, total: data.length })
-      const current = data.find(s => !s.completed)?.step_number || data.length
-      setCurrentStep(current)
+    if (user) {
+      loadJourneyProgress()
     }
-  }
+  }, [user, location.pathname])
 
   const [title, subtitle] = pageTitles[location.pathname] || ['Page', '']
   const progressPercent = percentage(journeyProgress.completed, journeyProgress.total)
@@ -160,4 +151,3 @@ export default function Layout() {
     </div>
   )
 }
-

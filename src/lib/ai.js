@@ -1,6 +1,6 @@
 /**
  * AffiliateAI Pro - AI Module
- * Handles all AI interactions via Groq API
+ * Multi-provider AI service: Groq, Anthropic (Opus 4.5), Google (Nano Banana)
  */
 
 import { CONFIG } from './config'
@@ -15,6 +15,7 @@ class AIService {
     return 'id_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now()
   }
 
+  // ==================== GROQ API ====================
   async callGroq(messages, options = {}, apiKey) {
     if (!apiKey) {
       throw new Error('Please configure your Groq API key in Settings')
@@ -43,7 +44,7 @@ class AIService {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error?.message || 'AI request failed')
+        throw new Error(error.error?.message || 'Groq API request failed')
       }
 
       const data = await response.json()
@@ -54,7 +55,173 @@ class AIService {
     }
   }
 
-  async chat(userMessage, context = {}, apiKey, experienceLevel = 'beginner') {
+  // ==================== ANTHROPIC API (Claude Opus 4.5) ====================
+  async callAnthropic(messages, options = {}, apiKey) {
+    if (!apiKey) {
+      throw new Error('Please configure your Anthropic API key in Settings')
+    }
+
+    const {
+      model = CONFIG.ai.providers.anthropic.defaultModel,
+      temperature = 0.7,
+      maxTokens = 4096
+    } = options
+
+    // Convert from OpenAI format to Anthropic format
+    const systemMessage = messages.find(m => m.role === 'system')?.content || ''
+    const anthropicMessages = messages
+      .filter(m => m.role !== 'system')
+      .map(m => ({ role: m.role, content: m.content }))
+
+    try {
+      const response = await fetch(`${CONFIG.ai.providers.anthropic.baseUrl}/messages`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: maxTokens,
+          temperature,
+          system: systemMessage,
+          messages: anthropicMessages
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error?.message || 'Anthropic API request failed')
+      }
+
+      const data = await response.json()
+      return data.content[0].text
+    } catch (error) {
+      console.error('Anthropic API Error:', error)
+      throw error
+    }
+  }
+
+  // ==================== GOOGLE GEMINI API ====================
+  async callGoogle(messages, options = {}, apiKey) {
+    if (!apiKey) {
+      throw new Error('Please configure your Google API key in Settings')
+    }
+
+    const {
+      model = CONFIG.ai.providers.google.models.text.id,
+      temperature = 0.7,
+      maxTokens = 4096
+    } = options
+
+    // Convert from OpenAI format to Gemini format
+    const contents = messages
+      .filter(m => m.role !== 'system')
+      .map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }))
+
+    const systemInstruction = messages.find(m => m.role === 'system')?.content
+
+    try {
+      const response = await fetch(
+        `${CONFIG.ai.providers.google.baseUrl}/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents,
+            systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
+            generationConfig: {
+              temperature,
+              maxOutputTokens: maxTokens
+            }
+          })
+        }
+      )
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error?.message || 'Google API request failed')
+      }
+
+      const data = await response.json()
+      return data.candidates[0].content.parts[0].text
+    } catch (error) {
+      console.error('Google API Error:', error)
+      throw error
+    }
+  }
+
+  // ==================== NANO BANANA (Google Imagen 3) ====================
+  async generateImage(prompt, options = {}, apiKey) {
+    if (!apiKey) {
+      throw new Error('Please configure your Google API key in Settings for image generation')
+    }
+
+    const {
+      aspectRatio = '16:9',
+      numberOfImages = 1
+    } = options
+
+    try {
+      const response = await fetch(
+        `${CONFIG.ai.providers.google.baseUrl}/models/imagen-3.0-generate-002:predict?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            instances: [{ prompt }],
+            parameters: {
+              sampleCount: numberOfImages,
+              aspectRatio,
+              personGeneration: 'allow_adult',
+              safetyFilterLevel: 'block_few'
+            }
+          })
+        }
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error?.message || 'Image generation failed')
+      }
+
+      const data = await response.json()
+      
+      if (!data.predictions || data.predictions.length === 0) {
+        throw new Error('No images generated')
+      }
+
+      // Return base64 image(s)
+      return data.predictions.map(p => ({
+        base64: p.bytesBase64Encoded,
+        mimeType: p.mimeType || 'image/png'
+      }))
+    } catch (error) {
+      console.error('Nano Banana Image Generation Error:', error)
+      throw error
+    }
+  }
+
+  // ==================== UNIFIED TEXT GENERATION ====================
+  async generateText(messages, options = {}, apiKey, provider = 'groq') {
+    switch (provider) {
+      case 'anthropic':
+        return this.callAnthropic(messages, options, apiKey)
+      case 'google':
+        return this.callGoogle(messages, options, apiKey)
+      case 'groq':
+      default:
+        return this.callGroq(messages, options, apiKey)
+    }
+  }
+
+  // ==================== CHAT INTERFACE ====================
+  async chat(userMessage, context = {}, apiKey, experienceLevel = 'beginner', provider = 'groq') {
     const systemPrompt = this.getSystemPrompt(context, experienceLevel)
     
     this.conversationHistory.push({ role: 'user', content: userMessage })
@@ -65,7 +232,7 @@ class AIService {
       ...recentHistory
     ]
 
-    const response = await this.callGroq(messages, {}, apiKey)
+    const response = await this.generateText(messages, {}, apiKey, provider)
     this.conversationHistory.push({ role: 'assistant', content: response })
     
     return response
@@ -105,7 +272,7 @@ Provide keyword suggestions with search intent, difficulty estimates, and conten
     return basePrompt + (contextPrompts[context.module] || '')
   }
 
-  async analyzeNiche(niche, subNiche = '', apiKey) {
+  async analyzeNiche(niche, subNiche = '', apiKey, provider = 'groq') {
     const prompt = `Analyze the affiliate marketing potential of this niche:
 
 Niche: ${niche}
@@ -128,10 +295,10 @@ Provide a detailed analysis in JSON format with these fields:
 
 Be realistic and data-informed in your analysis.`
 
-    const response = await this.callGroq([
+    const response = await this.generateText([
       { role: 'system', content: 'You are a niche analysis expert. Respond only with valid JSON.' },
       { role: 'user', content: prompt }
-    ], { temperature: 0.3 }, apiKey)
+    ], { temperature: 0.3 }, apiKey, provider)
 
     const jsonMatch = response.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
@@ -140,7 +307,7 @@ Be realistic and data-informed in your analysis.`
     throw new Error('Invalid response format')
   }
 
-  async generateContent(options, apiKey) {
+  async generateContent(options, apiKey, provider = 'groq') {
     const { type, topic, product, keywords = [], tone = 'professional', length = 'medium', platform = 'blog', includeAffiliateLink = true } = options
 
     const lengthGuide = { short: '200-400 words', medium: '600-1000 words', long: '1500-2500 words' }
@@ -173,10 +340,10 @@ Respond with JSON format:
     "seo_keywords": ["keywords used"]
 }`
 
-    const response = await this.callGroq([
+    const response = await this.generateText([
       { role: 'system', content: 'You are an expert content creator for affiliate marketing. Create engaging, converting content. Respond only with valid JSON.' },
       { role: 'user', content: prompt }
-    ], { temperature: 0.7, maxTokens: 4096 }, apiKey)
+    ], { temperature: 0.7, maxTokens: 4096 }, apiKey, provider)
 
     const jsonMatch = response.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
@@ -185,7 +352,7 @@ Respond with JSON format:
     throw new Error('Invalid response format')
   }
 
-  async generateKeywords(niche, seedKeyword = '', apiKey) {
+  async generateKeywords(niche, seedKeyword = '', apiKey, provider = 'groq') {
     const prompt = `Generate keyword research for affiliate marketing.
 
 Niche: ${niche}
@@ -206,10 +373,10 @@ Provide 15 keyword suggestions in JSON format:
     "topic_clusters": ["related topic clusters to target"]
 }`
 
-    const response = await this.callGroq([
+    const response = await this.generateText([
       { role: 'system', content: 'You are an SEO and keyword research expert. Respond only with valid JSON.' },
       { role: 'user', content: prompt }
-    ], { temperature: 0.4 }, apiKey)
+    ], { temperature: 0.4 }, apiKey, provider)
 
     const jsonMatch = response.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
@@ -218,7 +385,7 @@ Provide 15 keyword suggestions in JSON format:
     throw new Error('Invalid response format')
   }
 
-  async generateEmailSequence(options, apiKey) {
+  async generateEmailSequence(options, apiKey, provider = 'groq') {
     const { product, niche, sequenceLength = 5, goal = 'sale' } = options
 
     const prompt = `Create a ${sequenceLength}-email sequence for affiliate marketing.
@@ -243,10 +410,10 @@ Respond in JSON format:
     ]
 }`
 
-    const response = await this.callGroq([
+    const response = await this.generateText([
       { role: 'system', content: 'You are an email marketing expert. Respond only with valid JSON.' },
       { role: 'user', content: prompt }
-    ], { temperature: 0.7, maxTokens: 4096 }, apiKey)
+    ], { temperature: 0.7, maxTokens: 4096 }, apiKey, provider)
 
     const jsonMatch = response.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
@@ -255,7 +422,7 @@ Respond in JSON format:
     throw new Error('Invalid response format')
   }
 
-  async getProductRecommendations(niche, platform = 'both', apiKey) {
+  async getProductRecommendations(niche, platform = 'both', apiKey, provider = 'groq') {
     const prompt = `Suggest affiliate products to promote in the ${niche} niche.
 
 Platform: ${platform === 'both' ? 'ClickBank and Amazon' : platform}
@@ -277,16 +444,40 @@ Provide recommendations in JSON format:
     "avoid": ["types of products to avoid and why"]
 }`
 
-    const response = await this.callGroq([
+    const response = await this.generateText([
       { role: 'system', content: 'You are an affiliate product research expert. Respond only with valid JSON.' },
       { role: 'user', content: prompt }
-    ], { temperature: 0.5 }, apiKey)
+    ], { temperature: 0.5 }, apiKey, provider)
 
     const jsonMatch = response.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0])
     }
     throw new Error('Invalid response format')
+  }
+
+  async generateImagePrompt(topic, style = 'professional', apiKey, provider = 'groq') {
+    const prompt = `Create an optimal image generation prompt for Nano Banana (Imagen 3) for this marketing content:
+
+Topic: ${topic}
+Style: ${style}
+
+Create a detailed, descriptive prompt that will generate a high-quality marketing image.
+The prompt should be specific about:
+- Visual composition and layout
+- Color palette
+- Style (photorealistic, illustration, etc.)
+- Mood and lighting
+- Key elements to include
+
+Respond with just the image prompt, no explanation.`
+
+    const response = await this.generateText([
+      { role: 'system', content: 'You are an expert at crafting image generation prompts. Create vivid, detailed prompts that produce stunning marketing visuals.' },
+      { role: 'user', content: prompt }
+    ], { temperature: 0.8 }, apiKey, provider)
+
+    return response.trim()
   }
 
   clearHistory() {
@@ -296,4 +487,3 @@ Provide recommendations in JSON format:
 }
 
 export const aiService = new AIService()
-

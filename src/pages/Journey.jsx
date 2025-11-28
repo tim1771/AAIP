@@ -30,7 +30,7 @@ const stepTasks = {
 
 export default function Journey() {
   const navigate = useNavigate()
-  const { user, addToast, updateProfile } = useStore()
+  const { user, addToast, updateProfile, loadJourneyProgress } = useStore()
   const [steps, setSteps] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -65,8 +65,12 @@ export default function Journey() {
       }).eq('user_id', user.id).eq('step_number', stepNumber)
 
       await updateProfile({ current_step: stepNumber + 1 })
+      
+      // Refresh both local and global state
+      await loadJourney()
+      await loadJourneyProgress()
+      
       addToast('Step completed! Keep going!', 'success')
-      loadJourney()
     } catch (error) {
       addToast('Error updating progress', 'error')
     }
@@ -202,4 +206,3 @@ export default function Journey() {
     </div>
   )
 }
-

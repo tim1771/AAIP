@@ -19,6 +19,14 @@ export const useStore = create(
       aiSidebarOpen: false,
       currentModule: 'dashboard',
       
+      // Journey State (synced globally)
+      journeyProgress: { completed: 0, total: 9 },
+      currentStep: 1,
+      
+      // AI Provider State
+      selectedTextProvider: 'groq',
+      selectedImageProvider: 'google',
+      
       // Toast notifications
       toasts: [],
       
@@ -29,6 +37,40 @@ export const useStore = create(
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       setAiSidebarOpen: (open) => set({ aiSidebarOpen: open }),
       setCurrentModule: (module) => set({ currentModule: module }),
+      
+      // AI Provider Actions
+      setSelectedTextProvider: (provider) => set({ selectedTextProvider: provider }),
+      setSelectedImageProvider: (provider) => set({ selectedImageProvider: provider }),
+
+      // Journey Actions
+      setJourneyProgress: (progress) => set({ journeyProgress: progress }),
+      setCurrentStep: (step) => set({ currentStep: step }),
+      
+      loadJourneyProgress: async () => {
+        const { user } = get()
+        if (!user) return
+        
+        try {
+          const { data } = await supabase
+            .from('user_journey')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('step_number')
+
+          if (data && data.length > 0) {
+            const completed = data.filter(s => s.completed).length
+            const total = data.length
+            const current = data.find(s => !s.completed)?.step_number || total
+            
+            set({ 
+              journeyProgress: { completed, total },
+              currentStep: current 
+            })
+          }
+        } catch (error) {
+          console.error('Error loading journey progress:', error)
+        }
+      },
 
       // Toast actions
       addToast: (message, type = 'info') => {
@@ -54,6 +96,7 @@ export const useStore = create(
           
           set({ user: data.user })
           await get().loadProfile()
+          await get().loadJourneyProgress()
           get().addToast('Welcome back!', 'success')
           return { success: true }
         } catch (error) {
@@ -82,7 +125,7 @@ export const useStore = create(
       signOut: async () => {
         try {
           await supabase.auth.signOut()
-          set({ user: null, profile: null })
+          set({ user: null, profile: null, journeyProgress: { completed: 0, total: 9 }, currentStep: 1 })
           get().addToast('Signed out successfully', 'info')
         } catch (error) {
           get().addToast(error.message, 'error')
@@ -123,7 +166,7 @@ export const useStore = create(
           
           if (error) throw error
           set({ profile: data })
-          get().addToast('Profile updated!', 'success')
+          get().addToast('Settings saved!', 'success')
           return { success: true, data }
         } catch (error) {
           get().addToast(error.message, 'error')
@@ -139,12 +182,14 @@ export const useStore = create(
           if (session) {
             set({ user: session.user })
             await get().loadProfile()
+            await get().loadJourneyProgress()
           }
           
           supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_IN' && session) {
               set({ user: session.user })
               await get().loadProfile()
+              await get().loadJourneyProgress()
             } else if (event === 'SIGNED_OUT') {
               set({ user: null, profile: null })
             }
@@ -154,13 +199,28 @@ export const useStore = create(
         }
       },
 
-      // Getters
-      getGroqApiKey: () => {
+      // API Key Getters (multi-provider)
+      getApiKey: (provider) => {
         const { profile } = get()
-        return profile?.groq_api_key || localStorage.getItem('affiliateai_groq_api_key')
+        const keyMap = {
+          groq: 'groq_api_key',
+          anthropic: 'anthropic_api_key',
+          google: 'google_api_key'
+        }
+        const keyName = keyMap[provider]
+        return profile?.[keyName] || localStorage.getItem(`affiliateai_${keyName}`)
       },
       
-      hasApiKey: () => !!get().getGroqApiKey(),
+      // Legacy getter for backwards compatibility
+      getGroqApiKey: () => get().getApiKey('groq'),
+      
+      hasApiKey: (provider = 'groq') => !!get().getApiKey(provider),
+      
+      hasAnyTextApiKey: () => {
+        return get().hasApiKey('groq') || get().hasApiKey('anthropic') || get().hasApiKey('google')
+      },
+      
+      hasImageApiKey: () => get().hasApiKey('google'),
       
       getDisplayName: () => {
         const { profile, user } = get()
@@ -175,9 +235,10 @@ export const useStore = create(
     {
       name: 'affiliateai-storage',
       partialize: (state) => ({
-        sidebarOpen: state.sidebarOpen
+        sidebarOpen: state.sidebarOpen,
+        selectedTextProvider: state.selectedTextProvider,
+        selectedImageProvider: state.selectedImageProvider
       })
     }
   )
 )
-

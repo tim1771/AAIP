@@ -21,6 +21,7 @@ import SEO from './pages/SEO'
 import Campaigns from './pages/Campaigns'
 import EmailSequences from './pages/EmailSequences'
 import Calendar from './pages/Calendar'
+import AffiliatePrograms from './pages/AffiliatePrograms'
 import CanvaStudio from './pages/CanvaStudio'
 import LinkTracker from './pages/LinkTracker'
 import Analytics from './pages/Analytics'
@@ -61,6 +62,7 @@ function App() {
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/email" element={<EmailSequences />} />
           <Route path="/calendar" element={<Calendar />} />
+          <Route path="/affiliates" element={<AffiliatePrograms />} />
           <Route path="/canva" element={<CanvaStudio />} />
           <Route path="/links" element={<LinkTracker />} />
           <Route path="/analytics" element={<Analytics />} />
@@ -83,4 +85,3 @@ function App() {
 }
 
 export default App
-
