@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import { supabase } from '../lib/supabase'
+import { supabase, withTimeout } from '../lib/supabase'
 import { aiService } from '../lib/ai'
 import { CONFIG } from '../lib/config'
 import { formatDate, truncate, wordCount, readingTime, copyToClipboard, downloadAsFile, markdownToHTML } from '../lib/utils'
@@ -44,10 +44,10 @@ export default function ContentGenerator() {
         return
       }
       try {
-        const [contentRes, productsRes] = await Promise.all([
+        const [contentRes, productsRes] = await withTimeout(Promise.all([
           supabase.from('content').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
           supabase.from('affiliate_products').select('id, product_name, platform, affiliate_link').eq('user_id', user.id).eq('status', 'promoting')
-        ])
+        ]), 6000)
         if (isMounted) {
           setContent(contentRes.data || [])
           setProducts(productsRes.data || [])

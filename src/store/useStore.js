@@ -4,7 +4,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { supabase } from '../lib/supabase'
+import { supabase, withTimeout } from '../lib/supabase'
 
 export const useStore = create(
   persist(
@@ -51,11 +51,14 @@ export const useStore = create(
         if (!user) return
         
         try {
-          const { data } = await supabase
-            .from('user_journey')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('step_number')
+          const { data } = await withTimeout(
+            supabase
+              .from('user_journey')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('step_number'),
+            6000
+          )
 
           if (data && data.length > 0) {
             const completed = data.filter(s => s.completed).length

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import { supabase } from '../lib/supabase'
+import { supabase, withTimeout } from '../lib/supabase'
 import { formatDate } from '../lib/utils'
 
 export default function Calendar() {
@@ -21,7 +21,10 @@ export default function Calendar() {
         return
       }
       try {
-        const { data } = await supabase.from('content_calendar').select('*').eq('user_id', user.id).order('scheduled_date')
+        const { data } = await withTimeout(
+          supabase.from('content_calendar').select('*').eq('user_id', user.id).order('scheduled_date'),
+          6000
+        )
         if (isMounted) setItems(data || [])
       } catch (error) {
         console.error('Load calendar error:', error)

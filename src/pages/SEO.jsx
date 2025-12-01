@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import { supabase } from '../lib/supabase'
+import { supabase, withTimeout } from '../lib/supabase'
 import { aiService } from '../lib/ai'
 
 export default function SEO() {
@@ -25,10 +25,10 @@ export default function SEO() {
         return
       }
       try {
-        const [keywordsRes, nichesRes] = await Promise.all([
+        const [keywordsRes, nichesRes] = await withTimeout(Promise.all([
           supabase.from('keywords').select('*, user_niches(niche_name)').eq('user_id', user.id).order('priority', { ascending: false }),
           supabase.from('user_niches').select('id, niche_name, sub_niche').eq('user_id', user.id)
-        ])
+        ]), 6000)
         if (isMounted) {
           setKeywords(keywordsRes.data || [])
           setNiches(nichesRes.data || [])

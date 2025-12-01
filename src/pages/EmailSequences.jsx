@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import { supabase } from '../lib/supabase'
+import { supabase, withTimeout } from '../lib/supabase'
 import { aiService } from '../lib/ai'
 
 export default function EmailSequences() {
@@ -25,11 +25,11 @@ export default function EmailSequences() {
         return
       }
       try {
-        const [sequencesRes, nichesRes, productsRes] = await Promise.all([
+        const [sequencesRes, nichesRes, productsRes] = await withTimeout(Promise.all([
           supabase.from('email_sequences').select('*, email_sequence_items(*)').eq('user_id', user.id).order('created_at', { ascending: false }),
           supabase.from('user_niches').select('id, niche_name').eq('user_id', user.id),
           supabase.from('affiliate_products').select('id, product_name').eq('user_id', user.id)
-        ])
+        ]), 6000)
         if (isMounted) {
           setSequences(sequencesRes.data || [])
           setNiches(nichesRes.data || [])

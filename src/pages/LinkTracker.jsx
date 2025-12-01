@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import { supabase } from '../lib/supabase'
+import { supabase, withTimeout } from '../lib/supabase'
 import { generateShortCode, copyToClipboard } from '../lib/utils'
 
 export default function LinkTracker() {
@@ -22,10 +22,10 @@ export default function LinkTracker() {
         return
       }
       try {
-        const [linksRes, productsRes] = await Promise.all([
+        const [linksRes, productsRes] = await withTimeout(Promise.all([
           supabase.from('tracked_links').select('*, affiliate_products(product_name), campaigns(name)').eq('user_id', user.id).order('created_at', { ascending: false }),
           supabase.from('affiliate_products').select('id, product_name').eq('user_id', user.id)
-        ])
+        ]), 6000)
         if (isMounted) {
           setLinks(linksRes.data || [])
           setProducts(productsRes.data || [])
