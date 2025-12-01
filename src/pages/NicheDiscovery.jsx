@@ -16,13 +16,10 @@ export default function NicheDiscovery() {
   useEffect(() => {
     let isMounted = true
     
-    // Safety timeout
+    // Safety timeout - 2 seconds max
     const timeout = setTimeout(() => {
-      if (isMounted && loading) {
-        console.warn('NicheDiscovery loading timeout')
-        setLoading(false)
-      }
-    }, 10000)
+      if (isMounted && loading) setLoading(false)
+    }, 2000)
     
     const loadData = async () => {
       if (!user) {

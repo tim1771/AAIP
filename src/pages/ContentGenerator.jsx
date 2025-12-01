@@ -36,7 +36,7 @@ export default function ContentGenerator() {
     let isMounted = true
     const timeout = setTimeout(() => {
       if (isMounted && loading) setLoading(false)
-    }, 8000)
+    }, 2000)
     
     const fetchData = async () => {
       if (!user) {

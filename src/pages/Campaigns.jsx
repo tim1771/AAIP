@@ -14,13 +14,10 @@ export default function Campaigns() {
   useEffect(() => {
     let isMounted = true
     
-    // Safety timeout - force reset loading after 8 seconds
+    // Safety timeout - 2 seconds max
     const timeout = setTimeout(() => {
-      if (isMounted && loading) {
-        console.warn('Campaigns loading timeout - forcing reset')
-        setLoading(false)
-      }
-    }, 8000)
+      if (isMounted && loading) setLoading(false)
+    }, 2000)
     
     // Reset loading state when effect runs
     setLoading(true)

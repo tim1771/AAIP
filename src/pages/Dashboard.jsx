@@ -16,13 +16,10 @@ export default function Dashboard() {
   useEffect(() => {
     let isMounted = true
     
-    // Safety timeout - force reset loading after 10 seconds
+    // Safety timeout - 2 seconds max
     const timeout = setTimeout(() => {
-      if (isMounted && loading) {
-        console.warn('Dashboard loading timeout - forcing reset')
-        setLoading(false)
-      }
-    }, 10000)
+      if (isMounted && loading) setLoading(false)
+    }, 2000)
     
     const loadData = async () => {
       if (!user) {
