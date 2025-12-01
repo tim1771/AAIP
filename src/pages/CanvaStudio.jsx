@@ -9,17 +9,36 @@ export default function CanvaStudio() {
   const [designs, setDesigns] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { loadDesigns() }, [user])
+  useEffect(() => {
+    let isMounted = true
+    
+    const fetchData = async () => {
+      if (!user) {
+        if (isMounted) setLoading(false)
+        return
+      }
+      try {
+        const { data } = await supabase.from('canva_designs').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+        if (isMounted) setDesigns(data || [])
+      } catch (error) {
+        console.error('Load designs error:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    
+    fetchData()
+    return () => { isMounted = false }
+  }, [user?.id])
 
   const loadDesigns = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
+    if (!user) return
     try {
       const { data } = await supabase.from('canva_designs').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
       setDesigns(data || [])
-    } finally { setLoading(false) }
+    } catch (error) {
+      console.error('Load designs error:', error)
+    }
   }
 
   const connectCanva = () => {

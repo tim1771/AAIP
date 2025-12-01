@@ -13,13 +13,38 @@ export default function EmailSequences() {
   const [generated, setGenerated] = useState(null)
   const [form, setForm] = useState({ niche: '', product: '', count: '5', goal: 'sale' })
 
-  useEffect(() => { loadData() }, [user])
+  useEffect(() => {
+    let isMounted = true
+    
+    const fetchData = async () => {
+      if (!user) {
+        if (isMounted) setLoading(false)
+        return
+      }
+      try {
+        const [sequencesRes, nichesRes, productsRes] = await Promise.all([
+          supabase.from('email_sequences').select('*, email_sequence_items(*)').eq('user_id', user.id).order('created_at', { ascending: false }),
+          supabase.from('user_niches').select('id, niche_name').eq('user_id', user.id),
+          supabase.from('affiliate_products').select('id, product_name').eq('user_id', user.id)
+        ])
+        if (isMounted) {
+          setSequences(sequencesRes.data || [])
+          setNiches(nichesRes.data || [])
+          setProducts(productsRes.data || [])
+        }
+      } catch (error) {
+        console.error('Load email sequences error:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    
+    fetchData()
+    return () => { isMounted = false }
+  }, [user?.id])
 
   const loadData = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
+    if (!user) return
     try {
       const [sequencesRes, nichesRes, productsRes] = await Promise.all([
         supabase.from('email_sequences').select('*, email_sequence_items(*)').eq('user_id', user.id).order('created_at', { ascending: false }),
@@ -29,7 +54,9 @@ export default function EmailSequences() {
       setSequences(sequencesRes.data || [])
       setNiches(nichesRes.data || [])
       setProducts(productsRes.data || [])
-    } finally { setLoading(false) }
+    } catch (error) {
+      console.error('Load email sequences error:', error)
+    }
   }
 
   const generateSequence = async () => {

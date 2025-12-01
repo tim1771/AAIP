@@ -11,13 +11,38 @@ export default function Campaigns() {
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ name: '', niche: '', product: '', budget: '', description: '', audience: '' })
 
-  useEffect(() => { loadData() }, [user])
+  useEffect(() => {
+    let isMounted = true
+    
+    const fetchData = async () => {
+      if (!user) {
+        if (isMounted) setLoading(false)
+        return
+      }
+      try {
+        const [campaignsRes, nichesRes, productsRes] = await Promise.all([
+          supabase.from('campaigns').select('*, user_niches(niche_name), affiliate_products(product_name)').eq('user_id', user.id).order('created_at', { ascending: false }),
+          supabase.from('user_niches').select('id, niche_name').eq('user_id', user.id),
+          supabase.from('affiliate_products').select('id, product_name').eq('user_id', user.id).eq('status', 'promoting')
+        ])
+        if (isMounted) {
+          setCampaigns(campaignsRes.data || [])
+          setNiches(nichesRes.data || [])
+          setProducts(productsRes.data || [])
+        }
+      } catch (error) {
+        console.error('Load campaigns error:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    
+    fetchData()
+    return () => { isMounted = false }
+  }, [user?.id])
 
   const loadData = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
+    if (!user) return
     try {
       const [campaignsRes, nichesRes, productsRes] = await Promise.all([
         supabase.from('campaigns').select('*, user_niches(niche_name), affiliate_products(product_name)').eq('user_id', user.id).order('created_at', { ascending: false }),
@@ -27,7 +52,9 @@ export default function Campaigns() {
       setCampaigns(campaignsRes.data || [])
       setNiches(nichesRes.data || [])
       setProducts(productsRes.data || [])
-    } finally { setLoading(false) }
+    } catch (error) {
+      console.error('Load campaigns error:', error)
+    }
   }
 
   const createCampaign = async () => {

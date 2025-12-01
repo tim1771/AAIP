@@ -35,8 +35,37 @@ export default function Journey() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadJourney()
-  }, [user])
+    let isMounted = true
+    
+    const fetchData = async () => {
+      if (!user) {
+        if (isMounted) setLoading(false)
+        return
+      }
+      try {
+        const { data } = await supabase
+          .from('user_journey')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('step_number')
+
+        if (isMounted) {
+          const merged = CONFIG.journeySteps.map(configStep => {
+            const dbStep = data?.find(d => d.step_number === configStep.number)
+            return { ...configStep, completed: dbStep?.completed || false, completedAt: dbStep?.completed_at }
+          })
+          setSteps(merged)
+        }
+      } catch (error) {
+        console.error('Load journey error:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    
+    fetchData()
+    return () => { isMounted = false }
+  }, [user?.id])
 
   const loadJourney = async () => {
     if (!user) return
@@ -52,8 +81,8 @@ export default function Journey() {
         return { ...configStep, completed: dbStep?.completed || false, completedAt: dbStep?.completed_at }
       })
       setSteps(merged)
-    } finally {
-      setLoading(false)
+    } catch (error) {
+      console.error('Load journey error:', error)
     }
   }
 

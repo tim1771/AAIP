@@ -14,39 +14,47 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadDashboardData()
-  }, [user])
+    let isMounted = true
+    
+    const loadData = async () => {
+      if (!user) {
+        if (isMounted) setLoading(false)
+        return
+      }
 
-  const loadDashboardData = async () => {
-    if (!user) {
-      setLoading(false)
-      return
+      try {
+        const [nichesRes, productsRes, contentRes, journeyRes, analyticsRes] = await Promise.all([
+          supabase.from('user_niches').select('id', { count: 'exact' }).eq('user_id', user.id),
+          supabase.from('affiliate_products').select('id', { count: 'exact' }).eq('user_id', user.id),
+          supabase.from('content').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+          supabase.from('user_journey').select('*').eq('user_id', user.id).order('step_number'),
+          supabase.from('analytics').select('commission_earned').eq('user_id', user.id)
+        ])
+
+        if (!isMounted) return
+
+        const totalRevenue = analyticsRes.data?.reduce((sum, a) => sum + (parseFloat(a.commission_earned) || 0), 0) || 0
+
+        setStats({
+          niches: nichesRes.count || 0,
+          products: productsRes.count || 0,
+          content: contentRes.data?.length || 0,
+          revenue: totalRevenue
+        })
+
+        setJourney(journeyRes.data || [])
+        setRecentContent(contentRes.data || [])
+      } catch (error) {
+        console.error('Dashboard load error:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
     }
 
-    try {
-      const [nichesRes, productsRes, contentRes, journeyRes, analyticsRes] = await Promise.all([
-        supabase.from('user_niches').select('id', { count: 'exact' }).eq('user_id', user.id),
-        supabase.from('affiliate_products').select('id', { count: 'exact' }).eq('user_id', user.id),
-        supabase.from('content').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
-        supabase.from('user_journey').select('*').eq('user_id', user.id).order('step_number'),
-        supabase.from('analytics').select('commission_earned').eq('user_id', user.id)
-      ])
-
-      const totalRevenue = analyticsRes.data?.reduce((sum, a) => sum + (parseFloat(a.commission_earned) || 0), 0) || 0
-
-      setStats({
-        niches: nichesRes.count || 0,
-        products: productsRes.count || 0,
-        content: contentRes.data?.length || 0,
-        revenue: totalRevenue
-      })
-
-      setJourney(journeyRes.data || [])
-      setRecentContent(contentRes.data || [])
-    } finally {
-      setLoading(false)
-    }
-  }
+    loadData()
+    
+    return () => { isMounted = false }
+  }, [user?.id])
 
   const completedSteps = journey.filter(s => s.completed).length
   const currentStep = journey.find(s => !s.completed)?.step_number || journey.length

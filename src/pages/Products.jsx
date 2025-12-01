@@ -22,14 +22,35 @@ export default function Products() {
   })
 
   useEffect(() => {
-    loadData()
-  }, [user])
+    let isMounted = true
+    
+    const fetchData = async () => {
+      if (!user) {
+        if (isMounted) setLoading(false)
+        return
+      }
+      try {
+        const [productsRes, nichesRes] = await Promise.all([
+          supabase.from('affiliate_products').select('*, user_niches(niche_name)').eq('user_id', user.id).order('created_at', { ascending: false }),
+          supabase.from('user_niches').select('id, niche_name, sub_niche').eq('user_id', user.id)
+        ])
+        if (isMounted) {
+          setProducts(productsRes.data || [])
+          setNiches(nichesRes.data || [])
+        }
+      } catch (error) {
+        console.error('Load products error:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    
+    fetchData()
+    return () => { isMounted = false }
+  }, [user?.id])
 
   const loadData = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
+    if (!user) return
     try {
       const [productsRes, nichesRes] = await Promise.all([
         supabase.from('affiliate_products').select('*, user_niches(niche_name)').eq('user_id', user.id).order('created_at', { ascending: false }),
@@ -37,8 +58,8 @@ export default function Products() {
       ])
       setProducts(productsRes.data || [])
       setNiches(nichesRes.data || [])
-    } finally {
-      setLoading(false)
+    } catch (error) {
+      console.error('Load products error:', error)
     }
   }
 

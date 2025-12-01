@@ -10,13 +10,36 @@ export default function LinkTracker() {
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ url: '', product: '', source: '', medium: '', campaign: '' })
 
-  useEffect(() => { loadData() }, [user])
+  useEffect(() => {
+    let isMounted = true
+    
+    const fetchData = async () => {
+      if (!user) {
+        if (isMounted) setLoading(false)
+        return
+      }
+      try {
+        const [linksRes, productsRes] = await Promise.all([
+          supabase.from('tracked_links').select('*, affiliate_products(product_name), campaigns(name)').eq('user_id', user.id).order('created_at', { ascending: false }),
+          supabase.from('affiliate_products').select('id, product_name').eq('user_id', user.id)
+        ])
+        if (isMounted) {
+          setLinks(linksRes.data || [])
+          setProducts(productsRes.data || [])
+        }
+      } catch (error) {
+        console.error('Load links error:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    
+    fetchData()
+    return () => { isMounted = false }
+  }, [user?.id])
 
   const loadData = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
+    if (!user) return
     try {
       const [linksRes, productsRes] = await Promise.all([
         supabase.from('tracked_links').select('*, affiliate_products(product_name), campaigns(name)').eq('user_id', user.id).order('created_at', { ascending: false }),
@@ -24,7 +47,9 @@ export default function LinkTracker() {
       ])
       setLinks(linksRes.data || [])
       setProducts(productsRes.data || [])
-    } finally { setLoading(false) }
+    } catch (error) {
+      console.error('Load links error:', error)
+    }
   }
 
   const createLink = async () => {

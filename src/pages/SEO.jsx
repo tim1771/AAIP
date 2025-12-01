@@ -14,14 +14,35 @@ export default function SEO() {
   const [seedKeyword, setSeedKeyword] = useState('')
 
   useEffect(() => {
-    loadData()
-  }, [user])
+    let isMounted = true
+    
+    const fetchData = async () => {
+      if (!user) {
+        if (isMounted) setLoading(false)
+        return
+      }
+      try {
+        const [keywordsRes, nichesRes] = await Promise.all([
+          supabase.from('keywords').select('*, user_niches(niche_name)').eq('user_id', user.id).order('priority', { ascending: false }),
+          supabase.from('user_niches').select('id, niche_name, sub_niche').eq('user_id', user.id)
+        ])
+        if (isMounted) {
+          setKeywords(keywordsRes.data || [])
+          setNiches(nichesRes.data || [])
+        }
+      } catch (error) {
+        console.error('Load SEO data error:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    
+    fetchData()
+    return () => { isMounted = false }
+  }, [user?.id])
 
   const loadData = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
+    if (!user) return
     try {
       const [keywordsRes, nichesRes] = await Promise.all([
         supabase.from('keywords').select('*, user_niches(niche_name)').eq('user_id', user.id).order('priority', { ascending: false }),
@@ -29,8 +50,8 @@ export default function SEO() {
       ])
       setKeywords(keywordsRes.data || [])
       setNiches(nichesRes.data || [])
-    } finally {
-      setLoading(false)
+    } catch (error) {
+      console.error('Load SEO data error:', error)
     }
   }
 

@@ -12,13 +12,46 @@ export default function Analytics() {
   const [form, setForm] = useState({ product: '', source: '', clicks: '', conversions: '', revenue: '', date: new Date().toISOString().split('T')[0] })
   const [products, setProducts] = useState([])
 
-  useEffect(() => { loadData() }, [user, period])
+  useEffect(() => {
+    let isMounted = true
+    
+    const fetchData = async () => {
+      if (!user) {
+        if (isMounted) setLoading(false)
+        return
+      }
+      const dateFilter = new Date()
+      dateFilter.setDate(dateFilter.getDate() - parseInt(period))
+
+      try {
+        const [analyticsRes, productsRes] = await Promise.all([
+          supabase.from('analytics').select('*, affiliate_products(product_name)').eq('user_id', user.id).gte('created_at', dateFilter.toISOString()).order('created_at', { ascending: false }),
+          supabase.from('affiliate_products').select('id, product_name').eq('user_id', user.id)
+        ])
+        
+        if (isMounted) {
+          const data = analyticsRes.data || []
+          setAnalytics(data)
+          setProducts(productsRes.data || [])
+          setSummary({
+            clicks: data.reduce((sum, a) => sum + (a.clicks || 0), 0),
+            conversions: data.reduce((sum, a) => sum + (a.conversions || 0), 0),
+            revenue: data.reduce((sum, a) => sum + (parseFloat(a.commission_earned) || 0), 0)
+          })
+        }
+      } catch (error) {
+        console.error('Load analytics error:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    
+    fetchData()
+    return () => { isMounted = false }
+  }, [user?.id, period])
 
   const loadData = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
+    if (!user) return
     const dateFilter = new Date()
     dateFilter.setDate(dateFilter.getDate() - parseInt(period))
 
@@ -36,7 +69,9 @@ export default function Analytics() {
         conversions: data.reduce((sum, a) => sum + (a.conversions || 0), 0),
         revenue: data.reduce((sum, a) => sum + (parseFloat(a.commission_earned) || 0), 0)
       })
-    } finally { setLoading(false) }
+    } catch (error) {
+      console.error('Load analytics error:', error)
+    }
   }
 
   const addEntry = async () => {

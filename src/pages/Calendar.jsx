@@ -9,17 +9,36 @@ export default function Calendar() {
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ title: '', type: 'blog_article', date: '', platform: 'blog', status: 'planned' })
 
-  useEffect(() => { loadData() }, [user])
+  useEffect(() => {
+    let isMounted = true
+    
+    const fetchData = async () => {
+      if (!user) {
+        if (isMounted) setLoading(false)
+        return
+      }
+      try {
+        const { data } = await supabase.from('content_calendar').select('*').eq('user_id', user.id).order('scheduled_date')
+        if (isMounted) setItems(data || [])
+      } catch (error) {
+        console.error('Load calendar error:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    
+    fetchData()
+    return () => { isMounted = false }
+  }, [user?.id])
 
   const loadData = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
+    if (!user) return
     try {
       const { data } = await supabase.from('content_calendar').select('*').eq('user_id', user.id).order('scheduled_date')
       setItems(data || [])
-    } finally { setLoading(false) }
+    } catch (error) {
+      console.error('Load calendar error:', error)
+    }
   }
 
   const addItem = async () => {

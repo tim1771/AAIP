@@ -14,14 +14,32 @@ export default function NicheDiscovery() {
   const [customNiche, setCustomNiche] = useState('')
 
   useEffect(() => {
-    loadNiches()
-  }, [user])
+    let isMounted = true
+    
+    const loadData = async () => {
+      if (!user) {
+        if (isMounted) setLoading(false)
+        return
+      }
+      try {
+        const { data } = await supabase
+          .from('user_niches')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+        if (isMounted) setNiches(data || [])
+      } catch (error) {
+        console.error('Load niches error:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    
+    loadData()
+    return () => { isMounted = false }
+  }, [user?.id])
 
   const loadNiches = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
     try {
       const { data } = await supabase
         .from('user_niches')
@@ -29,8 +47,8 @@ export default function NicheDiscovery() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
       setNiches(data || [])
-    } finally {
-      setLoading(false)
+    } catch (error) {
+      console.error('Load niches error:', error)
     }
   }
 

@@ -33,8 +33,32 @@ export default function ContentGenerator() {
   })
 
   useEffect(() => {
-    loadData()
-  }, [user])
+    let isMounted = true
+    
+    const fetchData = async () => {
+      if (!user) {
+        if (isMounted) setLoading(false)
+        return
+      }
+      try {
+        const [contentRes, productsRes] = await Promise.all([
+          supabase.from('content').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
+          supabase.from('affiliate_products').select('id, product_name, platform, affiliate_link').eq('user_id', user.id).eq('status', 'promoting')
+        ])
+        if (isMounted) {
+          setContent(contentRes.data || [])
+          setProducts(productsRes.data || [])
+        }
+      } catch (error) {
+        console.error('Load content error:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    
+    fetchData()
+    return () => { isMounted = false }
+  }, [user?.id])
 
   const loadData = async () => {
     if (!user) return
@@ -45,8 +69,8 @@ export default function ContentGenerator() {
       ])
       setContent(contentRes.data || [])
       setProducts(productsRes.data || [])
-    } finally {
-      setLoading(false)
+    } catch (error) {
+      console.error('Load content error:', error)
     }
   }
 
