@@ -14,6 +14,17 @@ export default function Campaigns() {
   useEffect(() => {
     let isMounted = true
     
+    // Safety timeout - force reset loading after 8 seconds
+    const timeout = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn('Campaigns loading timeout - forcing reset')
+        setLoading(false)
+      }
+    }, 8000)
+    
+    // Reset loading state when effect runs
+    setLoading(true)
+    
     const fetchData = async () => {
       if (!user) {
         if (isMounted) setLoading(false)
@@ -38,7 +49,10 @@ export default function Campaigns() {
     }
     
     fetchData()
-    return () => { isMounted = false }
+    return () => { 
+      isMounted = false
+      clearTimeout(timeout)
+    }
   }, [user?.id])
 
   const loadData = async () => {

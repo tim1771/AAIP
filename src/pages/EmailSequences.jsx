@@ -15,6 +15,9 @@ export default function EmailSequences() {
 
   useEffect(() => {
     let isMounted = true
+    const timeout = setTimeout(() => {
+      if (isMounted && loading) setLoading(false)
+    }, 8000)
     
     const fetchData = async () => {
       if (!user) {
@@ -40,7 +43,7 @@ export default function EmailSequences() {
     }
     
     fetchData()
-    return () => { isMounted = false }
+    return () => { isMounted = false; clearTimeout(timeout) }
   }, [user?.id])
 
   const loadData = async () => {

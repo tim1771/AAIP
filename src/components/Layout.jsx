@@ -139,7 +139,8 @@ export default function Layout() {
         </header>
 
         <div className="content-wrapper">
-          <Outlet />
+          {/* Key forces React to remount page components on navigation */}
+          <Outlet key={location.pathname} />
         </div>
       </main>
 

@@ -14,6 +14,9 @@ export default function Analytics() {
 
   useEffect(() => {
     let isMounted = true
+    const timeout = setTimeout(() => {
+      if (isMounted && loading) setLoading(false)
+    }, 8000)
     
     const fetchData = async () => {
       if (!user) {
@@ -47,7 +50,7 @@ export default function Analytics() {
     }
     
     fetchData()
-    return () => { isMounted = false }
+    return () => { isMounted = false; clearTimeout(timeout) }
   }, [user?.id, period])
 
   const loadData = async () => {
