@@ -16,6 +16,14 @@ export default function Dashboard() {
   useEffect(() => {
     let isMounted = true
     
+    // Safety timeout - force reset loading after 10 seconds
+    const timeout = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn('Dashboard loading timeout - forcing reset')
+        setLoading(false)
+      }
+    }, 10000)
+    
     const loadData = async () => {
       if (!user) {
         if (isMounted) setLoading(false)
@@ -53,7 +61,10 @@ export default function Dashboard() {
 
     loadData()
     
-    return () => { isMounted = false }
+    return () => { 
+      isMounted = false 
+      clearTimeout(timeout)
+    }
   }, [user?.id])
 
   const completedSteps = journey.filter(s => s.completed).length

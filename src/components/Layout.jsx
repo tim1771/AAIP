@@ -53,12 +53,12 @@ export default function Layout() {
     journeyProgress, currentStep, loadJourneyProgress 
   } = useStore()
 
-  // Refresh journey progress when navigating
+  // Load journey progress only once on mount, not on every navigation
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       loadJourneyProgress()
     }
-  }, [user, location.pathname])
+  }, [user?.id])
 
   const [title, subtitle] = pageTitles[location.pathname] || ['Page', '']
   const progressPercent = percentage(journeyProgress.completed, journeyProgress.total)

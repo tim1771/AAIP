@@ -37,7 +37,8 @@ function App() {
 
   useEffect(() => {
     initAuth()
-  }, [initAuth])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run once on mount
 
   if (isLoading) {
     return <LoadingScreen />

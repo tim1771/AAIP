@@ -16,6 +16,14 @@ export default function NicheDiscovery() {
   useEffect(() => {
     let isMounted = true
     
+    // Safety timeout
+    const timeout = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn('NicheDiscovery loading timeout')
+        setLoading(false)
+      }
+    }, 10000)
+    
     const loadData = async () => {
       if (!user) {
         if (isMounted) setLoading(false)
@@ -36,7 +44,10 @@ export default function NicheDiscovery() {
     }
     
     loadData()
-    return () => { isMounted = false }
+    return () => { 
+      isMounted = false
+      clearTimeout(timeout)
+    }
   }, [user?.id])
 
   const loadNiches = async () => {
