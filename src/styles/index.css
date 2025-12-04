@@ -734,7 +734,7 @@ a:hover { color: var(--primary-light); }
 .tour-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.4);
   z-index: 1000;
   animation: fadeIn 0.3s ease-out;
 }
@@ -742,7 +742,7 @@ a:hover { color: var(--primary-light); }
 .tour-spotlight {
   position: absolute;
   border-radius: var(--radius-lg);
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.75);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
