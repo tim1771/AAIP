@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import { supabase, withTimeout } from '../lib/supabase'
+import { supabase, safeQuery, withAuth } from '../lib/supabase'
 import { aiService } from '../lib/ai'
 import { CONFIG } from '../lib/config'
+import { SkeletonNicheCard } from '../components/Skeleton'
 
 export default function NicheDiscovery() {
   const { user, addToast, getGroqApiKey, hasApiKey } = useStore()
@@ -11,30 +12,32 @@ export default function NicheDiscovery() {
   const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [customNiche, setCustomNiche] = useState('')
 
   useEffect(() => {
     let isMounted = true
-    
-    // Safety timeout - 2 seconds max
-    const timeout = setTimeout(() => {
-      if (isMounted && loading) setLoading(false)
-    }, 2000)
     
     const loadData = async () => {
       if (!user) {
         if (isMounted) setLoading(false)
         return
       }
+      
       try {
-        const { data } = await withTimeout(
+        const { data, error } = await safeQuery(() => 
           supabase
             .from('user_niches')
             .select('*')
             .eq('user_id', user.id)
-            .order('created_at', { ascending: false }),
-          6000
+            .order('created_at', { ascending: false })
         )
+        
+        if (error) {
+          console.error('Niche query error:', error)
+          addToast('Error loading niches', 'error')
+        }
+        
         if (isMounted) setNiches(data || [])
       } catch (error) {
         console.error('Load niches error:', error)
@@ -44,10 +47,7 @@ export default function NicheDiscovery() {
     }
     
     loadData()
-    return () => { 
-      isMounted = false
-      clearTimeout(timeout)
-    }
+    return () => { isMounted = false }
   }, [user?.id])
 
   const loadNiches = async () => {
@@ -81,23 +81,30 @@ export default function NicheDiscovery() {
   }
 
   const saveNiche = async () => {
-    if (!analysis) return
+    if (!analysis) {
+      addToast('No niche analysis to save', 'warning')
+      return
+    }
 
+    setSaving(true)
+    
     try {
       // Ensure profitability_score is an integer
       const profitScore = parseInt(analysis.profitability_score) || 50
       
-      const { data, error } = await supabase.from('user_niches').insert({
-        user_id: user.id,
-        niche_name: analysis.niche,
-        sub_niche: analysis.subNiche || null,
-        profitability_score: profitScore,
-        competition_level: analysis.competition_level?.toLowerCase() || 'medium',
-        market_size: analysis.market_size || null,
-        trending: analysis.trending || false,
-        interest_level: 5, // Default to middle value (constraint requires 1-10)
-        ai_analysis: analysis
-      }).select()
+      const { data, error } = await withAuth(() => 
+        supabase.from('user_niches').insert({
+          user_id: user.id,
+          niche_name: analysis.niche,
+          sub_niche: analysis.subNiche || null,
+          profitability_score: profitScore,
+          competition_level: analysis.competition_level?.toLowerCase() || 'medium',
+          market_size: analysis.market_size || null,
+          trending: analysis.trending || false,
+          interest_level: 5, // Default to middle value (constraint requires 1-10)
+          ai_analysis: analysis
+        }).select()
+      )
 
       if (error) {
         console.error('Supabase insert error:', error)
@@ -111,12 +118,14 @@ export default function NicheDiscovery() {
         return
       }
 
-      addToast('Niche saved!', 'success')
+      addToast('Niche saved! ✨', 'success')
       await loadNiches()
       setAnalysis(null)
     } catch (error) {
       console.error('Save niche error:', error)
       addToast('Error saving niche', 'error')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -285,8 +294,10 @@ export default function NicheDiscovery() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                  <button className="btn btn-primary" onClick={saveNiche}>Save This Niche</button>
-                  <button className="btn btn-secondary" onClick={() => setAnalysis(null)}>Clear</button>
+                  <button className="btn btn-primary" onClick={saveNiche} disabled={saving}>
+                    {saving ? 'Saving...' : 'Save This Niche'}
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setAnalysis(null)} disabled={saving}>Clear</button>
                 </div>
               </div>
             ) : (

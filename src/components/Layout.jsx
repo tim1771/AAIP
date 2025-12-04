@@ -1,8 +1,10 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { getInitials, percentage } from '../lib/utils'
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import AISidebar from './AISidebar'
+import ThemeToggle from './ThemeToggle'
+import OnboardingTour from './OnboardingTour'
 import './Layout.css'
 
 const navItems = [
@@ -50,15 +52,30 @@ export default function Layout() {
   const { 
     profile, user, signOut, sidebarOpen, setSidebarOpen, 
     aiSidebarOpen, setAiSidebarOpen,
-    journeyProgress, currentStep, loadJourneyProgress 
+    journeyProgress, currentStep, loadJourneyProgress,
+    theme
   } = useStore()
+  
+  const [showTour, setShowTour] = useState(false)
 
-  // Load journey progress only once on mount, not on every navigation
+  // Load journey progress and initialize theme
   useEffect(() => {
     if (user?.id) {
       loadJourneyProgress()
+      
+      // Check if user needs onboarding
+      const tourCompleted = localStorage.getItem('affiliateai_tour_completed')
+      if (!tourCompleted && !profile?.onboarding_completed) {
+        // Small delay to let the layout render first
+        setTimeout(() => setShowTour(true), 500)
+      }
     }
-  }, [user?.id])
+  }, [user?.id, profile?.onboarding_completed])
+
+  // Apply theme on mount and changes
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
 
   const [title, subtitle] = pageTitles[location.pathname] || ['Page', '']
   const progressPercent = percentage(journeyProgress.completed, journeyProgress.total)
@@ -111,6 +128,9 @@ export default function Layout() {
         </ul>
 
         <div className="sidebar-footer">
+          <div className="theme-toggle-wrapper" style={{ padding: '0.5rem 1rem', marginBottom: '0.5rem' }}>
+            <ThemeToggle showLabel />
+          </div>
           <button className="nav-item" onClick={() => navigate('/settings')}>
             <span className="nav-icon">⚙️</span>
             <span className="nav-text">Settings</span>
@@ -149,6 +169,9 @@ export default function Layout() {
       
       {/* Mobile overlay */}
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+      
+      {/* Onboarding Tour */}
+      {showTour && <OnboardingTour onComplete={() => setShowTour(false)} />}
     </div>
   )
 }

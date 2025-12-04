@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
-import { supabase, withTimeout } from '../lib/supabase'
+import { supabase, safeQuery } from '../lib/supabase'
 import { formatCurrency, formatDate, truncate, percentage } from '../lib/utils'
 import { CONFIG } from '../lib/config'
+import { SkeletonDashboard } from '../components/Skeleton'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -16,11 +17,6 @@ export default function Dashboard() {
   useEffect(() => {
     let isMounted = true
     
-    // Safety timeout - 2 seconds max
-    const timeout = setTimeout(() => {
-      if (isMounted && loading) setLoading(false)
-    }, 2000)
-    
     const loadData = async () => {
       if (!user) {
         if (isMounted) setLoading(false)
@@ -28,13 +24,15 @@ export default function Dashboard() {
       }
 
       try {
-        const [nichesRes, productsRes, contentRes, journeyRes, analyticsRes] = await withTimeout(Promise.all([
-          supabase.from('user_niches').select('id', { count: 'exact' }).eq('user_id', user.id),
-          supabase.from('affiliate_products').select('id', { count: 'exact' }).eq('user_id', user.id),
-          supabase.from('content').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
-          supabase.from('user_journey').select('*').eq('user_id', user.id).order('step_number'),
-          supabase.from('analytics').select('commission_earned').eq('user_id', user.id)
-        ]), 6000)
+        const [nichesRes, productsRes, contentRes, journeyRes, analyticsRes] = await safeQuery(() => 
+          Promise.all([
+            supabase.from('user_niches').select('id', { count: 'exact' }).eq('user_id', user.id),
+            supabase.from('affiliate_products').select('id', { count: 'exact' }).eq('user_id', user.id),
+            supabase.from('content').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+            supabase.from('user_journey').select('*').eq('user_id', user.id).order('step_number'),
+            supabase.from('analytics').select('commission_earned').eq('user_id', user.id)
+          ])
+        )
 
         if (!isMounted) return
 
@@ -58,17 +56,14 @@ export default function Dashboard() {
 
     loadData()
     
-    return () => { 
-      isMounted = false 
-      clearTimeout(timeout)
-    }
+    return () => { isMounted = false }
   }, [user?.id])
 
   const completedSteps = journey.filter(s => s.completed).length
   const currentStep = journey.find(s => !s.completed)?.step_number || journey.length
 
   if (loading) {
-    return <div className="loading-state"><div className="loader-ring" /><p>Loading dashboard...</p></div>
+    return <SkeletonDashboard />
   }
 
   return (

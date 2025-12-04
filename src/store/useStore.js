@@ -18,6 +18,8 @@ export const useStore = create(
       sidebarOpen: true,
       aiSidebarOpen: false,
       currentModule: 'dashboard',
+      theme: localStorage.getItem('affiliateai_theme') || 'dark',
+      showOnboarding: false,
       
       // Journey State (synced globally)
       journeyProgress: { completed: 0, total: 9 },
@@ -37,6 +39,11 @@ export const useStore = create(
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       setAiSidebarOpen: (open) => set({ aiSidebarOpen: open }),
       setCurrentModule: (module) => set({ currentModule: module }),
+      setTheme: (theme) => {
+        localStorage.setItem('affiliateai_theme', theme)
+        set({ theme })
+      },
+      setShowOnboarding: (show) => set({ showOnboarding: show }),
       
       // AI Provider Actions
       setSelectedTextProvider: (provider) => set({ selectedTextProvider: provider }),
@@ -240,7 +247,8 @@ export const useStore = create(
       partialize: (state) => ({
         sidebarOpen: state.sidebarOpen,
         selectedTextProvider: state.selectedTextProvider,
-        selectedImageProvider: state.selectedImageProvider
+        selectedImageProvider: state.selectedImageProvider,
+        theme: state.theme
       })
     }
   )

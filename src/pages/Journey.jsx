@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
-import { supabase, withTimeout } from '../lib/supabase'
+import { supabase, safeQuery } from '../lib/supabase'
 import { CONFIG } from '../lib/config'
 import { percentage } from '../lib/utils'
+import { SkeletonJourneyStep } from '../components/Skeleton'
 
 const stepIcons = {
   onboarding: '🚀', niche_discovery: '🎯', product_research: '🔍', strategy: '📋',
@@ -36,24 +37,26 @@ export default function Journey() {
 
   useEffect(() => {
     let isMounted = true
-    const timeout = setTimeout(() => {
-      if (isMounted && loading) setLoading(false)
-    }, 2000)
     
     const fetchData = async () => {
       if (!user) {
         if (isMounted) setLoading(false)
         return
       }
+      
       try {
-        const { data } = await withTimeout(
+        const { data, error } = await safeQuery(() =>
           supabase
             .from('user_journey')
             .select('*')
             .eq('user_id', user.id)
-            .order('step_number'),
-          6000
+            .order('step_number')
         )
+
+        if (error) {
+          console.error('Journey query error:', error)
+          addToast('Error loading journey data', 'error')
+        }
 
         if (isMounted) {
           const merged = CONFIG.journeySteps.map(configStep => {
@@ -70,7 +73,7 @@ export default function Journey() {
     }
     
     fetchData()
-    return () => { isMounted = false; clearTimeout(timeout) }
+    return () => { isMounted = false }
   }, [user?.id])
 
   const loadJourney = async () => {
@@ -117,7 +120,27 @@ export default function Journey() {
   const progressPercent = percentage(completedCount, steps.length)
 
   if (loading) {
-    return <div className="loading-state"><div className="loader-ring" /><p>Loading journey...</p></div>
+    return (
+      <div className="journey-page fade-in" style={{ maxWidth: 1000, margin: '0 auto' }}>
+        <div className="skeleton-card" style={{ marginBottom: '2rem', padding: '2rem' }}>
+          <div className="skeleton skeleton-title" style={{ width: 300 }} />
+          <div className="skeleton skeleton-text" style={{ width: 400 }} />
+          <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem' }}>
+            {[1, 2, 3].map(i => (
+              <div key={i}>
+                <div className="skeleton" style={{ width: 60, height: 40, marginBottom: '0.5rem' }} />
+                <div className="skeleton skeleton-text sm" style={{ width: 70 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {[...Array(5)].map((_, i) => (
+            <SkeletonJourneyStep key={i} index={i} />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
