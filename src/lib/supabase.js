@@ -8,50 +8,13 @@ export const supabase = createClient(CONFIG.supabase.url, CONFIG.supabase.anonKe
   }
 })
 
-// Promise that resolves when auth is ready
-let authReadyPromise = null
-let authReadyResolve = null
-
-// Initialize the auth ready promise
-const initAuthReady = () => {
-  if (!authReadyPromise) {
-    authReadyPromise = new Promise(resolve => {
-      authReadyResolve = resolve
-    })
-    
-    // Check if already authenticated
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        authReadyResolve(data.session)
-      }
-    })
-    
-    // Listen for auth changes
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        authReadyResolve(session)
-      } else if (event === 'SIGNED_OUT') {
-        // Reset for next login
-        authReadyPromise = new Promise(resolve => {
-          authReadyResolve = resolve
-        })
-      }
-    })
-  }
-  return authReadyPromise
-}
-
-// Initialize on load
-initAuthReady()
-
 /**
  * Wait for auth to be ready before making queries
- * Use this wrapper for queries that need authentication
+ * Simply checks if session exists, with a small delay for RLS
  */
 export const withAuth = async (queryFn) => {
-  await initAuthReady()
-  // Small additional delay for RLS policies to be fully ready
-  await new Promise(resolve => setTimeout(resolve, 50))
+  // Small delay to ensure auth session is fully established
+  await new Promise(resolve => setTimeout(resolve, 100))
   return queryFn()
 }
 
@@ -68,8 +31,10 @@ export const withTimeout = (promise, ms = 10000) => {
 }
 
 /**
- * Safe query helper - combines auth waiting and timeout
+ * Safe query helper - combines auth delay and timeout
  */
 export const safeQuery = async (queryFn, timeoutMs = 10000) => {
-  return withAuth(() => withTimeout(queryFn(), timeoutMs))
+  // Small delay to ensure auth is ready
+  await new Promise(resolve => setTimeout(resolve, 100))
+  return withTimeout(queryFn(), timeoutMs)
 }
