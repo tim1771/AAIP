@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import AISidebar from './AISidebar'
 import ThemeToggle from './ThemeToggle'
 import OnboardingTour from './OnboardingTour'
+import VideoModal from './VideoModal'
 import './Layout.css'
 
 const navItems = [
@@ -57,6 +58,7 @@ export default function Layout() {
   } = useStore()
   
   const [showTour, setShowTour] = useState(false)
+  const [showVideoModal, setShowVideoModal] = useState(false)
 
   // Load journey progress and initialize theme
   useEffect(() => {
@@ -108,6 +110,43 @@ export default function Layout() {
             <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
           </div>
         </div>
+
+        {/* What is AffiliateAI Pro? Video Button */}
+        <button
+          onClick={() => setShowVideoModal(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            width: 'calc(100% - 2rem)',
+            margin: '0.75rem 1rem',
+            padding: '0.75rem 1rem',
+            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%)',
+            border: '1px solid var(--primary)',
+            borderRadius: 'var(--radius-md)',
+            cursor: 'pointer',
+            transition: 'all var(--transition-fast)',
+            textAlign: 'left'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%)'
+            e.currentTarget.style.transform = 'translateY(-1px)'
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%)'
+            e.currentTarget.style.transform = 'translateY(0)'
+          }}
+        >
+          <span style={{ fontSize: '1.25rem' }}>🎬</span>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+              What is AffiliateAI Pro?
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              Watch intro video
+            </div>
+          </div>
+        </button>
 
         <ul className="nav-menu">
           {navItems.map((item, index) => (
@@ -172,6 +211,14 @@ export default function Layout() {
       
       {/* Onboarding Tour */}
       {showTour && <OnboardingTour onComplete={() => setShowTour(false)} />}
+      
+      {/* Intro Video Modal */}
+      <VideoModal 
+        isOpen={showVideoModal}
+        onClose={() => setShowVideoModal(false)}
+        videoSrc="/intro-video.mp4"
+        title="What is AffiliateAI Pro?"
+      />
     </div>
   )
 }
