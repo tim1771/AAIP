@@ -142,6 +142,20 @@ export const useStore = create(
         }
       },
 
+      resetPassword: async (email) => {
+        try {
+          const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/login?reset=true`
+          })
+          if (error) throw error
+          get().addToast('Password reset email sent! Check your inbox.', 'success')
+          return { success: true }
+        } catch (error) {
+          get().addToast(error.message, 'error')
+          return { success: false, error }
+        }
+      },
+
       loadProfile: async () => {
         const { user } = get()
         if (!user) return null

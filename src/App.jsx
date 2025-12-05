@@ -2,35 +2,44 @@
  * AffiliateAI Pro - Main App Component
  */
 
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useStore } from './store/useStore'
 
-// Layout
+// Layout - loaded immediately
 import Layout from './components/Layout'
 import AuthLayout from './components/AuthLayout'
-
-// Pages
-import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import Journey from './pages/Journey'
-import NicheDiscovery from './pages/NicheDiscovery'
-import Products from './pages/Products'
-import ContentGenerator from './pages/ContentGenerator'
-import SEO from './pages/SEO'
-import Campaigns from './pages/Campaigns'
-import EmailSequences from './pages/EmailSequences'
-import Calendar from './pages/Calendar'
-import AffiliatePrograms from './pages/AffiliatePrograms'
-import CanvaStudio from './pages/CanvaStudio'
-import LinkTracker from './pages/LinkTracker'
-import Analytics from './pages/Analytics'
-import ROICalculator from './pages/ROICalculator'
-import Settings from './pages/Settings'
-
-// Components
-import Toast from './components/Toast'
+import ErrorBoundary from './components/ErrorBoundary'
 import LoadingScreen from './components/LoadingScreen'
+import Toast from './components/Toast'
+
+// Lazy-loaded pages for better performance
+const Login = lazy(() => import('./pages/Login'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Journey = lazy(() => import('./pages/Journey'))
+const NicheDiscovery = lazy(() => import('./pages/NicheDiscovery'))
+const Products = lazy(() => import('./pages/Products'))
+const ContentGenerator = lazy(() => import('./pages/ContentGenerator'))
+const SEO = lazy(() => import('./pages/SEO'))
+const Campaigns = lazy(() => import('./pages/Campaigns'))
+const EmailSequences = lazy(() => import('./pages/EmailSequences'))
+const Calendar = lazy(() => import('./pages/Calendar'))
+const AffiliatePrograms = lazy(() => import('./pages/AffiliatePrograms'))
+const CanvaStudio = lazy(() => import('./pages/CanvaStudio'))
+const LinkTracker = lazy(() => import('./pages/LinkTracker'))
+const Analytics = lazy(() => import('./pages/Analytics'))
+const ROICalculator = lazy(() => import('./pages/ROICalculator'))
+const Settings = lazy(() => import('./pages/Settings'))
+
+// Page loading fallback
+function PageLoader() {
+  return (
+    <div className="loading-state" style={{ minHeight: '50vh' }}>
+      <div className="loader-ring" />
+      <p>Loading...</p>
+    </div>
+  )
+}
 
 function App() {
   const { user, isLoading, initAuth, toasts } = useStore()
@@ -45,35 +54,67 @@ function App() {
   }
 
   return (
-    <>
-      <Routes>
-        {/* Auth Routes */}
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
-        </Route>
+    <ErrorBoundary>
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          {/* Auth Routes */}
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+          </Route>
 
-        {/* Protected Routes */}
-        <Route element={user ? <Layout /> : <Navigate to="/login" />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/journey" element={<Journey />} />
-          <Route path="/niche" element={<NicheDiscovery />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/content" element={<ContentGenerator />} />
-          <Route path="/seo" element={<SEO />} />
-          <Route path="/campaigns" element={<Campaigns />} />
-          <Route path="/email" element={<EmailSequences />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/affiliates" element={<AffiliatePrograms />} />
-          <Route path="/canva" element={<CanvaStudio />} />
-          <Route path="/links" element={<LinkTracker />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/roi" element={<ROICalculator />} />
-          <Route path="/settings" element={<Settings />} />
-        </Route>
+          {/* Protected Routes */}
+          <Route element={user ? <Layout /> : <Navigate to="/login" />}>
+            <Route path="/" element={
+              <Suspense fallback={<PageLoader />}><Dashboard /></Suspense>
+            } />
+            <Route path="/journey" element={
+              <Suspense fallback={<PageLoader />}><Journey /></Suspense>
+            } />
+            <Route path="/niche" element={
+              <Suspense fallback={<PageLoader />}><NicheDiscovery /></Suspense>
+            } />
+            <Route path="/products" element={
+              <Suspense fallback={<PageLoader />}><Products /></Suspense>
+            } />
+            <Route path="/content" element={
+              <Suspense fallback={<PageLoader />}><ContentGenerator /></Suspense>
+            } />
+            <Route path="/seo" element={
+              <Suspense fallback={<PageLoader />}><SEO /></Suspense>
+            } />
+            <Route path="/campaigns" element={
+              <Suspense fallback={<PageLoader />}><Campaigns /></Suspense>
+            } />
+            <Route path="/email" element={
+              <Suspense fallback={<PageLoader />}><EmailSequences /></Suspense>
+            } />
+            <Route path="/calendar" element={
+              <Suspense fallback={<PageLoader />}><Calendar /></Suspense>
+            } />
+            <Route path="/affiliates" element={
+              <Suspense fallback={<PageLoader />}><AffiliatePrograms /></Suspense>
+            } />
+            <Route path="/canva" element={
+              <Suspense fallback={<PageLoader />}><CanvaStudio /></Suspense>
+            } />
+            <Route path="/links" element={
+              <Suspense fallback={<PageLoader />}><LinkTracker /></Suspense>
+            } />
+            <Route path="/analytics" element={
+              <Suspense fallback={<PageLoader />}><Analytics /></Suspense>
+            } />
+            <Route path="/roi" element={
+              <Suspense fallback={<PageLoader />}><ROICalculator /></Suspense>
+            } />
+            <Route path="/settings" element={
+              <Suspense fallback={<PageLoader />}><Settings /></Suspense>
+            } />
+          </Route>
 
-        {/* Catch all */}
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+          {/* Catch all */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Suspense>
 
       {/* Toast Notifications */}
       <div className="toast-container">
@@ -81,7 +122,7 @@ function App() {
           <Toast key={toast.id} {...toast} />
         ))}
       </div>
-    </>
+    </ErrorBoundary>
   )
 }
 

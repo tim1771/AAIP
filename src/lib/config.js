@@ -3,10 +3,10 @@
  */
 
 export const CONFIG = {
-  // Supabase Configuration
+  // Supabase Configuration - Uses environment variables for security
   supabase: {
-    url: 'https://itodkevoqcamcfyzwgqw.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0b2RrZXZvcWNhbWNmeXp3Z3F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNDYyNjIsImV4cCI6MjA3OTgyMjI2Mn0.hLmcLn299M4EPR07V7vh3uwsPfgzzBcmYn-SHkTCpXI'
+    url: import.meta.env.VITE_SUPABASE_URL || 'https://itodkevoqcamcfyzwgqw.supabase.co',
+    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0b2RrZXZvcWNhbWNmeXp3Z3F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNDYyNjIsImV4cCI6MjA3OTgyMjI2Mn0.hLmcLn299M4EPR07V7vh3uwsPfgzzBcmYn-SHkTCpXI'
   },
 
   // Multi-Provider AI Configuration

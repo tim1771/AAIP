@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useStore } from '../store/useStore'
 
 export default function Login() {
-  const { signIn, signUp } = useStore()
-  const [isSignUp, setIsSignUp] = useState(false)
+  const { signIn, signUp, resetPassword } = useStore()
+  const [mode, setMode] = useState('login') // 'login', 'signup', 'forgot'
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -15,7 +15,12 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
 
-    if (isSignUp) {
+    if (mode === 'forgot') {
+      const result = await resetPassword(formData.email)
+      if (result.success) {
+        setMode('login')
+      }
+    } else if (mode === 'signup') {
       await signUp(formData.email, formData.password, formData.name)
     } else {
       await signIn(formData.email, formData.password)
@@ -24,14 +29,42 @@ export default function Login() {
     setLoading(false)
   }
 
+  const getTitle = () => {
+    switch (mode) {
+      case 'signup': return 'Start Your Journey'
+      case 'forgot': return 'Reset Password'
+      default: return 'Welcome Back'
+    }
+  }
+
+  const getButtonText = () => {
+    if (loading) return null
+    switch (mode) {
+      case 'signup': return 'Create Account'
+      case 'forgot': return 'Send Reset Link'
+      default: return 'Sign In'
+    }
+  }
+
   return (
     <div className="auth-form-container">
       <form onSubmit={handleSubmit}>
         <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-          {isSignUp ? 'Start Your Journey' : 'Welcome Back'}
+          {getTitle()}
         </h2>
 
-        {isSignUp && (
+        {mode === 'forgot' && (
+          <p style={{ 
+            textAlign: 'center', 
+            color: 'var(--text-muted)', 
+            marginBottom: '1.5rem',
+            fontSize: '0.9rem'
+          }}>
+            Enter your email address and we'll send you a link to reset your password.
+          </p>
+        )}
+
+        {mode === 'signup' && (
           <div className="form-group">
             <label>Full Name</label>
             <input
@@ -55,34 +88,65 @@ export default function Login() {
           />
         </div>
 
-        <div className="form-group">
-          <label>Password</label>
-          <input
-            type="password"
-            value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            placeholder="••••••••"
-            required
-            minLength={6}
-          />
-        </div>
+        {mode !== 'forgot' && (
+          <div className="form-group">
+            <label>Password</label>
+            <input
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder="••••••••"
+              required
+              minLength={6}
+            />
+          </div>
+        )}
+
+        {mode === 'login' && (
+          <div style={{ textAlign: 'right', marginBottom: '1rem' }}>
+            <a 
+              href="#" 
+              onClick={(e) => { e.preventDefault(); setMode('forgot') }}
+              style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}
+            >
+              Forgot password?
+            </a>
+          </div>
+        )}
 
         <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
           {loading ? (
             <span className="loader-ring" style={{ width: 20, height: 20 }} />
           ) : (
-            isSignUp ? 'Create Account' : 'Sign In'
+            getButtonText()
           )}
         </button>
 
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-          {isSignUp ? 'Already have an account?' : "New to AffiliateAI?"}{' '}
-          <a href="#" onClick={(e) => { e.preventDefault(); setIsSignUp(!isSignUp) }}>
-            {isSignUp ? 'Sign In' : 'Create Account'}
-          </a>
+          {mode === 'forgot' ? (
+            <>
+              Remember your password?{' '}
+              <a href="#" onClick={(e) => { e.preventDefault(); setMode('login') }}>
+                Sign In
+              </a>
+            </>
+          ) : mode === 'signup' ? (
+            <>
+              Already have an account?{' '}
+              <a href="#" onClick={(e) => { e.preventDefault(); setMode('login') }}>
+                Sign In
+              </a>
+            </>
+          ) : (
+            <>
+              New to AffiliateAI?{' '}
+              <a href="#" onClick={(e) => { e.preventDefault(); setMode('signup') }}>
+                Create Account
+              </a>
+            </>
+          )}
         </p>
       </form>
     </div>
   )
 }
-
