@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
-import { supabase, safeQuery } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { CONFIG } from '../lib/config'
 import { percentage } from '../lib/utils'
 import { SkeletonJourneyStep } from '../components/Skeleton'
@@ -45,28 +45,36 @@ export default function Journey() {
       }
       
       try {
-        const { data, error } = await safeQuery(() =>
-          supabase
-            .from('user_journey')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('step_number')
-        )
+        // Direct query - simpler and more reliable
+        const { data, error } = await supabase
+          .from('user_journey')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('step_number')
 
         if (error) {
           console.error('Journey query error:', error)
           addToast('Error loading journey data', 'error')
         }
 
-        if (isMounted) {
+        console.log('Journey data loaded:', data?.length, 'steps') // Debug log
+
+        if (isMounted && data) {
           const merged = CONFIG.journeySteps.map(configStep => {
-            const dbStep = data?.find(d => d.step_number === configStep.number)
+            const dbStep = data.find(d => d.step_number === configStep.number)
             return { ...configStep, completed: dbStep?.completed || false, completedAt: dbStep?.completed_at }
           })
           setSteps(merged)
+        } else if (isMounted) {
+          // Fallback: use config steps with no completion data
+          setSteps(CONFIG.journeySteps.map(s => ({ ...s, completed: false })))
         }
       } catch (error) {
         console.error('Load journey error:', error)
+        // Fallback on error
+        if (isMounted) {
+          setSteps(CONFIG.journeySteps.map(s => ({ ...s, completed: false })))
+        }
       } finally {
         if (isMounted) setLoading(false)
       }

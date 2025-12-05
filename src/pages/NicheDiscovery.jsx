@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import { supabase, safeQuery, withAuth } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { aiService } from '../lib/ai'
 import { CONFIG } from '../lib/config'
 import { SkeletonNicheCard } from '../components/Skeleton'
@@ -25,18 +25,19 @@ export default function NicheDiscovery() {
       }
       
       try {
-        const { data, error } = await safeQuery(() => 
-          supabase
-            .from('user_niches')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-        )
+        // Direct query - simpler and more reliable
+        const { data, error } = await supabase
+          .from('user_niches')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
         
         if (error) {
           console.error('Niche query error:', error)
           addToast('Error loading niches', 'error')
         }
+        
+        console.log('Niches loaded:', data?.length) // Debug log
         
         if (isMounted) setNiches(data || [])
       } catch (error) {
@@ -92,19 +93,18 @@ export default function NicheDiscovery() {
       // Ensure profitability_score is an integer
       const profitScore = parseInt(analysis.profitability_score) || 50
       
-      const { data, error } = await withAuth(() => 
-        supabase.from('user_niches').insert({
-          user_id: user.id,
-          niche_name: analysis.niche,
-          sub_niche: analysis.subNiche || null,
-          profitability_score: profitScore,
-          competition_level: analysis.competition_level?.toLowerCase() || 'medium',
-          market_size: analysis.market_size || null,
-          trending: analysis.trending || false,
-          interest_level: 5, // Default to middle value (constraint requires 1-10)
-          ai_analysis: analysis
-        }).select()
-      )
+      // Direct insert - simpler and more reliable
+      const { data, error } = await supabase.from('user_niches').insert({
+        user_id: user.id,
+        niche_name: analysis.niche,
+        sub_niche: analysis.subNiche || null,
+        profitability_score: profitScore,
+        competition_level: analysis.competition_level?.toLowerCase() || 'medium',
+        market_size: analysis.market_size || null,
+        trending: analysis.trending || false,
+        interest_level: 5, // Default to middle value (constraint requires 1-10)
+        ai_analysis: analysis
+      }).select()
 
       if (error) {
         console.error('Supabase insert error:', error)
