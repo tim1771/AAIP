@@ -7,7 +7,7 @@ export default function Calendar() {
   const { user, addToast } = useStore()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ title: '', type: 'blog_article', date: '', platform: 'blog', status: 'planned' })
+  const [form, setForm] = useState({ title: '', type: 'blog_article', date: '', platform: 'blog', status: 'scheduled' })
 
   useEffect(() => {
     let isMounted = true
@@ -89,7 +89,7 @@ export default function Calendar() {
       
       console.log('Calendar item added:', data)
       addToast('Content scheduled!', 'success')
-      setForm({ title: '', type: 'blog_article', date: '', platform: 'blog', status: 'planned' })
+      setForm({ title: '', type: 'blog_article', date: '', platform: 'blog', status: 'scheduled' })
       loadData()
     } catch (error) { 
       console.error('Calendar add error:', error)
@@ -156,9 +156,9 @@ export default function Calendar() {
                           <div style={{ fontWeight: 500 }}>{item.title}</div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.platform}</div>
                         </div>
-                        <span className={`tag ${item.status === 'published' ? 'success' : item.status === 'in_progress' ? 'warning' : 'info'}`}>{item.status}</span>
+                        <span className={`tag ${item.status === 'posted' ? 'success' : item.status === 'failed' ? 'error' : item.status === 'cancelled' ? 'warning' : 'info'}`}>{item.status}</span>
                         <select value={item.status} onChange={(e) => updateStatus(item.id, e.target.value)} style={{ padding: '0.25rem', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: '0.8rem' }}>
-                          <option value="planned">Planned</option><option value="in_progress">In Progress</option><option value="published">Published</option>
+                          <option value="scheduled">Scheduled</option><option value="posted">Posted</option><option value="failed">Failed</option><option value="cancelled">Cancelled</option>
                         </select>
                         <button className="btn btn-sm btn-ghost" onClick={() => deleteItem(item.id)}>🗑️</button>
                       </div>
