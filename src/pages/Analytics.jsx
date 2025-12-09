@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import { supabase, withTimeout } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDate, percentage } from '../lib/utils'
 
 export default function Analytics() {
@@ -14,23 +14,37 @@ export default function Analytics() {
 
   useEffect(() => {
     let isMounted = true
+    let isLoaded = false
+    
+    // Safety timeout - 5 seconds max
     const timeout = setTimeout(() => {
-      if (isMounted && loading) setLoading(false)
-    }, 2000)
+      if (isMounted && !isLoaded) {
+        console.log('Analytics safety timeout triggered')
+        setLoading(false)
+      }
+    }, 5000)
     
     const fetchData = async () => {
       if (!user) {
         if (isMounted) setLoading(false)
+        isLoaded = true
         return
       }
       const dateFilter = new Date()
       dateFilter.setDate(dateFilter.getDate() - parseInt(period))
 
       try {
-        const [analyticsRes, productsRes] = await withTimeout(Promise.all([
+        // Direct queries - simpler and more reliable
+        const [analyticsRes, productsRes] = await Promise.all([
           supabase.from('analytics').select('*, affiliate_products(product_name)').eq('user_id', user.id).gte('created_at', dateFilter.toISOString()).order('created_at', { ascending: false }),
           supabase.from('affiliate_products').select('id, product_name').eq('user_id', user.id)
-        ]), 6000)
+        ])
+        
+        if (analyticsRes.error) console.error('Analytics query error:', analyticsRes.error)
+        if (productsRes.error) console.error('Products query error:', productsRes.error)
+        
+        console.log('Analytics loaded:', analyticsRes.data?.length || 0, 'entries')
+        console.log('Products loaded:', productsRes.data?.length || 0, 'products')
         
         if (isMounted) {
           const data = analyticsRes.data || []
@@ -42,8 +56,10 @@ export default function Analytics() {
             revenue: data.reduce((sum, a) => sum + (parseFloat(a.commission_earned) || 0), 0)
           })
         }
+        isLoaded = true
       } catch (error) {
         console.error('Load analytics error:', error)
+        isLoaded = true
       } finally {
         if (isMounted) setLoading(false)
       }
