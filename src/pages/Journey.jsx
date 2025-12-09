@@ -32,56 +32,64 @@ const stepTasks = {
 export default function Journey() {
   const navigate = useNavigate()
   const { user, addToast, updateProfile, loadJourneyProgress } = useStore()
-  const [steps, setSteps] = useState([])
+  const [steps, setSteps] = useState(CONFIG.journeySteps.map(s => ({ ...s, completed: false })))
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let isMounted = true
+    let isLoaded = false
+    
+    // Safety timeout - stop loading after 5 seconds no matter what
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted && !isLoaded) {
+        console.log('Journey safety timeout triggered')
+        setLoading(false)
+      }
+    }, 5000)
     
     const fetchData = async () => {
       if (!user) {
         if (isMounted) setLoading(false)
+        isLoaded = true
         return
       }
       
       try {
-        // Direct query - simpler and more reliable
+        // Direct query
         const { data, error } = await supabase
           .from('user_journey')
           .select('*')
           .eq('user_id', user.id)
           .order('step_number')
 
+        if (!isMounted) return
+
         if (error) {
           console.error('Journey query error:', error)
-          addToast('Error loading journey data', 'error')
         }
 
-        console.log('Journey data loaded:', data?.length, 'steps') // Debug log
+        console.log('Journey data loaded:', data?.length || 0, 'steps')
 
-        if (isMounted && data) {
-          const merged = CONFIG.journeySteps.map(configStep => {
-            const dbStep = data.find(d => d.step_number === configStep.number)
-            return { ...configStep, completed: dbStep?.completed || false, completedAt: dbStep?.completed_at }
-          })
-          setSteps(merged)
-        } else if (isMounted) {
-          // Fallback: use config steps with no completion data
-          setSteps(CONFIG.journeySteps.map(s => ({ ...s, completed: false })))
-        }
+        const merged = CONFIG.journeySteps.map(configStep => {
+          const dbStep = data?.find(d => d.step_number === configStep.number)
+          return { ...configStep, completed: dbStep?.completed || false, completedAt: dbStep?.completed_at }
+        })
+        setSteps(merged)
+        isLoaded = true
       } catch (error) {
         console.error('Load journey error:', error)
-        // Fallback on error
-        if (isMounted) {
-          setSteps(CONFIG.journeySteps.map(s => ({ ...s, completed: false })))
-        }
+        isLoaded = true
       } finally {
         if (isMounted) setLoading(false)
       }
     }
     
     fetchData()
-    return () => { isMounted = false }
+    
+    return () => { 
+      isMounted = false 
+      clearTimeout(safetyTimeout)
+    }
   }, [user?.id])
 
   const loadJourney = async () => {
