@@ -31,7 +31,7 @@ export default function Campaigns() {
         const [campaignsRes, nichesRes, productsRes] = await withTimeout(Promise.all([
           supabase.from('campaigns').select('*, user_niches(niche_name), affiliate_products(product_name)').eq('user_id', user.id).order('created_at', { ascending: false }),
           supabase.from('user_niches').select('id, niche_name').eq('user_id', user.id),
-          supabase.from('affiliate_products').select('id, product_name').eq('user_id', user.id).eq('status', 'promoting')
+          supabase.from('affiliate_products').select('id, product_name, status').eq('user_id', user.id)
         ]), 6000)
         if (isMounted) {
           setCampaigns(campaignsRes.data || [])
@@ -58,7 +58,7 @@ export default function Campaigns() {
       const [campaignsRes, nichesRes, productsRes] = await Promise.all([
         supabase.from('campaigns').select('*, user_niches(niche_name), affiliate_products(product_name)').eq('user_id', user.id).order('created_at', { ascending: false }),
         supabase.from('user_niches').select('id, niche_name').eq('user_id', user.id),
-        supabase.from('affiliate_products').select('id, product_name').eq('user_id', user.id).eq('status', 'promoting')
+        supabase.from('affiliate_products').select('id, product_name, status').eq('user_id', user.id)
       ])
       setCampaigns(campaignsRes.data || [])
       setNiches(nichesRes.data || [])
@@ -112,7 +112,7 @@ export default function Campaigns() {
             <div className="form-group"><label>Niche</label><select value={form.niche} onChange={(e) => setForm({ ...form, niche: e.target.value })}><option value="">Select niche...</option>{niches.map(n => <option key={n.id} value={n.id}>{n.niche_name}</option>)}</select></div>
           </div>
           <div className="form-row">
-            <div className="form-group"><label>Product</label><select value={form.product} onChange={(e) => setForm({ ...form, product: e.target.value })}><option value="">Select product...</option>{products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}</select></div>
+            <div className="form-group"><label>Product</label><select value={form.product} onChange={(e) => setForm({ ...form, product: e.target.value })}><option value="">Select product...</option>{products.map(p => <option key={p.id} value={p.id}>{p.product_name} ({p.status})</option>)}</select></div>
             <div className="form-group"><label>Budget</label><input type="number" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} placeholder="e.g., 500" /></div>
           </div>
           <div className="form-group"><label>Description</label><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Campaign goals..." /></div>
