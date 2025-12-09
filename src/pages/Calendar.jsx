@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import { supabase, withTimeout } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/utils'
 
 export default function Calendar() {
@@ -11,23 +11,39 @@ export default function Calendar() {
 
   useEffect(() => {
     let isMounted = true
+    let isLoaded = false
+    
+    // Safety timeout - 5 seconds max
     const timeout = setTimeout(() => {
-      if (isMounted && loading) setLoading(false)
-    }, 2000)
+      if (isMounted && !isLoaded) {
+        console.log('Calendar safety timeout triggered')
+        setLoading(false)
+      }
+    }, 5000)
     
     const fetchData = async () => {
       if (!user) {
         if (isMounted) setLoading(false)
+        isLoaded = true
         return
       }
       try {
-        const { data } = await withTimeout(
-          supabase.from('content_calendar').select('*').eq('user_id', user.id).order('scheduled_date'),
-          6000
-        )
+        const { data, error } = await supabase
+          .from('content_calendar')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('scheduled_date')
+        
+        if (error) {
+          console.error('Calendar load error:', error)
+        }
+        
+        console.log('Calendar items loaded:', data?.length || 0)
         if (isMounted) setItems(data || [])
+        isLoaded = true
       } catch (error) {
         console.error('Load calendar error:', error)
+        isLoaded = true
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -50,13 +66,35 @@ export default function Calendar() {
   const addItem = async () => {
     if (!form.title || !form.date) { addToast('Please fill title and date', 'warning'); return }
     try {
-      await supabase.from('content_calendar').insert({
-        user_id: user.id, title: form.title, content_type: form.type, scheduled_date: form.date, platform: form.platform, status: form.status
-      })
+      const { data, error } = await supabase.from('content_calendar').insert({
+        user_id: user.id, 
+        title: form.title, 
+        content_type: form.type, 
+        scheduled_date: form.date, 
+        platform: form.platform, 
+        status: form.status
+      }).select()
+      
+      if (error) {
+        console.error('Calendar insert error:', error)
+        addToast(`Error: ${error.message}`, 'error')
+        return
+      }
+      
+      if (!data || data.length === 0) {
+        console.error('No data returned from insert')
+        addToast('Error scheduling content - please try again', 'error')
+        return
+      }
+      
+      console.log('Calendar item added:', data)
       addToast('Content scheduled!', 'success')
       setForm({ title: '', type: 'blog_article', date: '', platform: 'blog', status: 'planned' })
       loadData()
-    } catch (error) { addToast('Error adding item', 'error') }
+    } catch (error) { 
+      console.error('Calendar add error:', error)
+      addToast('Error adding item', 'error') 
+    }
   }
 
   const updateStatus = async (id, status) => {
