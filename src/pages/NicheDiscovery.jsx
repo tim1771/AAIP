@@ -14,42 +14,68 @@ export default function NicheDiscovery() {
   const [analyzing, setAnalyzing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [customNiche, setCustomNiche] = useState('')
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
     let isMounted = true
+    let isLoaded = false
+    
+    // Safety timeout - force stop loading after 5 seconds
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted && !isLoaded) {
+        console.log('NicheDiscovery safety timeout triggered')
+        setLoading(false)
+      }
+    }, 5000)
     
     const loadData = async () => {
       if (!user) {
         if (isMounted) setLoading(false)
+        isLoaded = true
         return
       }
       
       try {
-        // Direct query - simpler and more reliable
         const { data, error } = await supabase
           .from('user_niches')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
         
+        if (!isMounted) return
+        
         if (error) {
           console.error('Niche query error:', error)
-          addToast('Error loading niches', 'error')
+          setLoadError(error.message)
+        } else {
+          console.log('Niches loaded:', data?.length || 0)
+          setNiches(data || [])
         }
-        
-        console.log('Niches loaded:', data?.length) // Debug log
-        
-        if (isMounted) setNiches(data || [])
+        isLoaded = true
       } catch (error) {
         console.error('Load niches error:', error)
+        if (isMounted) setLoadError(error.message)
+        isLoaded = true
       } finally {
         if (isMounted) setLoading(false)
       }
     }
     
     loadData()
-    return () => { isMounted = false }
+    
+    return () => { 
+      isMounted = false 
+      clearTimeout(safetyTimeout)
+    }
   }, [user?.id])
+  
+  // Show error toast after component mounts (not during effect)
+  useEffect(() => {
+    if (loadError) {
+      addToast('Error loading niches', 'error')
+      setLoadError(null)
+    }
+  }, [loadError, addToast])
 
   const loadNiches = async () => {
     try {

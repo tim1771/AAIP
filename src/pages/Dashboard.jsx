@@ -16,15 +16,24 @@ export default function Dashboard() {
 
   useEffect(() => {
     let isMounted = true
+    let isLoaded = false
+    
+    // Safety timeout - force stop loading after 5 seconds
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted && !isLoaded) {
+        console.log('Dashboard safety timeout triggered')
+        setLoading(false)
+      }
+    }, 5000)
     
     const loadData = async () => {
       if (!user) {
         if (isMounted) setLoading(false)
+        isLoaded = true
         return
       }
 
       try {
-        // Direct queries - simpler and more reliable
         const [nichesRes, productsRes, contentRes, journeyRes, analyticsRes] = await Promise.all([
           supabase.from('user_niches').select('id', { count: 'exact' }).eq('user_id', user.id),
           supabase.from('affiliate_products').select('id', { count: 'exact' }).eq('user_id', user.id),
@@ -46,8 +55,10 @@ export default function Dashboard() {
 
         setJourney(journeyRes.data || [])
         setRecentContent(contentRes.data || [])
+        isLoaded = true
       } catch (error) {
         console.error('Dashboard load error:', error)
+        isLoaded = true
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -55,7 +66,10 @@ export default function Dashboard() {
 
     loadData()
     
-    return () => { isMounted = false }
+    return () => { 
+      isMounted = false 
+      clearTimeout(safetyTimeout)
+    }
   }, [user?.id])
 
   const completedSteps = journey.filter(s => s.completed).length
