@@ -15,6 +15,76 @@ class AIService {
     return 'id_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now()
   }
 
+  /**
+   * Safely parse JSON from AI response
+   * Handles common issues like unescaped newlines and control characters
+   */
+  safeParseJSON(text) {
+    // Extract JSON from response (handles markdown code blocks too)
+    let jsonStr = text
+    
+    // Try to find JSON in code blocks first
+    const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (codeBlockMatch) {
+      jsonStr = codeBlockMatch[1].trim()
+    } else {
+      // Find JSON object pattern
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        jsonStr = jsonMatch[0]
+      }
+    }
+
+    // First try direct parse
+    try {
+      return JSON.parse(jsonStr)
+    } catch (e) {
+      // If that fails, try to fix common issues
+    }
+
+    // Fix unescaped control characters in string values
+    // This regex finds string values and escapes problematic characters
+    try {
+      const fixed = jsonStr
+        // Replace actual newlines inside strings with \n
+        .replace(/"([^"]*(?:\\.[^"]*)*)"/g, (match, content) => {
+          const escaped = content
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r')
+            .replace(/\t/g, '\\t')
+            .replace(/[\x00-\x1F\x7F]/g, '') // Remove other control chars
+          return `"${escaped}"`
+        })
+      
+      return JSON.parse(fixed)
+    } catch (e) {
+      // Still failing, try more aggressive cleanup
+    }
+
+    // Last resort: extract key fields manually
+    try {
+      const titleMatch = jsonStr.match(/"title"\s*:\s*"([^"]+)"/)
+      const contentMatch = jsonStr.match(/"content"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"|"\s*})/)
+      const hookMatch = jsonStr.match(/"hook"\s*:\s*"([^"]*)"/)
+      const ctaMatch = jsonStr.match(/"call_to_action"\s*:\s*"([^"]*)"/)
+      
+      if (titleMatch || contentMatch) {
+        return {
+          title: titleMatch ? titleMatch[1] : 'Generated Content',
+          content: contentMatch ? contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : '',
+          hook: hookMatch ? hookMatch[1] : '',
+          call_to_action: ctaMatch ? ctaMatch[1] : '',
+          suggested_hashtags: [],
+          seo_keywords: []
+        }
+      }
+    } catch (e) {
+      // Manual extraction failed
+    }
+
+    throw new Error('Could not parse AI response. Please try again.')
+  }
+
   // ==================== GROQ API ====================
   async callGroq(messages, options = {}, apiKey) {
     if (!apiKey) {
@@ -300,11 +370,7 @@ Be realistic and data-informed in your analysis.`
       { role: 'user', content: prompt }
     ], { temperature: 0.3 }, apiKey, provider)
 
-    const jsonMatch = response.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0])
-    }
-    throw new Error('Invalid response format')
+    return this.safeParseJSON(response)
   }
 
   async generateContent(options, apiKey, provider = 'groq') {
@@ -345,11 +411,7 @@ Respond with JSON format:
       { role: 'user', content: prompt }
     ], { temperature: 0.7, maxTokens: 4096 }, apiKey, provider)
 
-    const jsonMatch = response.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0])
-    }
-    throw new Error('Invalid response format')
+    return this.safeParseJSON(response)
   }
 
   async generateKeywords(niche, seedKeyword = '', apiKey, provider = 'groq') {
@@ -378,11 +440,7 @@ Provide 15 keyword suggestions in JSON format:
       { role: 'user', content: prompt }
     ], { temperature: 0.4 }, apiKey, provider)
 
-    const jsonMatch = response.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0])
-    }
-    throw new Error('Invalid response format')
+    return this.safeParseJSON(response)
   }
 
   async generateEmailSequence(options, apiKey, provider = 'groq') {
@@ -415,11 +473,7 @@ Respond in JSON format:
       { role: 'user', content: prompt }
     ], { temperature: 0.7, maxTokens: 4096 }, apiKey, provider)
 
-    const jsonMatch = response.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0])
-    }
-    throw new Error('Invalid response format')
+    return this.safeParseJSON(response)
   }
 
   async getProductRecommendations(niche, platform = 'both', apiKey, provider = 'groq') {
@@ -449,11 +503,7 @@ Provide recommendations in JSON format:
       { role: 'user', content: prompt }
     ], { temperature: 0.5 }, apiKey, provider)
 
-    const jsonMatch = response.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0])
-    }
-    throw new Error('Invalid response format')
+    return this.safeParseJSON(response)
   }
 
   async generateImagePrompt(topic, style = 'professional', apiKey, provider = 'groq') {
